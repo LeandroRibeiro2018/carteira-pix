@@ -1,0 +1,362 @@
+{
+  "info": {
+    "name": "Serviço de Carteira Pix",
+    "description": "Collection para testar o microserviço de carteira com Pix",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "walletId_alice",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "walletId_bob",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "endToEndId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Carteiras",
+      "item": [
+        {
+          "name": "Criar Carteira - Alice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletId_alice\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"alice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets"]
+            }
+          }
+        },
+        {
+          "name": "Create Wallet - Bob",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletId_bob\", jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"bob\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets"]
+            }
+          }
+        },
+        {
+          "name": "Get Balance - Alice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "balance"]
+            }
+          }
+        },
+        {
+          "name": "Get Historical Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/balance?at=2025-11-07T10:00:00Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "balance"],
+              "query": [
+                {
+                  "key": "at",
+                  "value": "2025-11-07T10:00:00Z"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Deposit to Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/deposit",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "deposit"]
+            }
+          }
+        },
+        {
+          "name": "Withdraw from Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/withdraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "withdraw"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pix Keys",
+      "item": [
+        {
+          "name": "Register Pix Key - Bob Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyType\": \"EMAIL\",\n  \"keyValue\": \"bob@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_bob}}/pix-keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_bob}}", "pix-keys"]
+            }
+          }
+        },
+        {
+          "name": "Register Pix Key - Alice Phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyType\": \"PHONE\",\n  \"keyValue\": \"11987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/pix-keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "pix-keys"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pix Transfers",
+      "item": [
+        {
+          "name": "Transfer Alice to Bob",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"endToEndId\", jsonData.endToEndId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{walletId_alice}}\",\n  \"toPixKey\": \"bob@example.com\",\n  \"amount\": 150.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "Webhook - Confirm Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"endToEndId\": \"{{endToEndId}}\",\n  \"eventType\": \"CONFIRMED\",\n  \"occurredAt\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "webhook"]
+            }
+          }
+        },
+        {
+          "name": "Webhook - Reject Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"endToEndId\": \"{{endToEndId}}\",\n  \"eventType\": \"REJECTED\",\n  \"occurredAt\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "webhook"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Observability",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            }
+          }
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Prometheus Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

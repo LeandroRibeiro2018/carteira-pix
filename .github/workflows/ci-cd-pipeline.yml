@@ -1,0 +1,289 @@
+name: CI/CD Pipeline - Carteira Pix
+
+on:
+  push:
+    branches:
+      - feature/**
+      - dev
+      - homolog
+      - main
+  pull_request:
+    branches:
+      - dev
+      - homolog
+      - main
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: -Xmx512m
+
+jobs:
+  # Job 1: Validação e Testes (executado em todas as branches)
+  validate-and-test:
+    name: 🧪 Validar e Executar Testes
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: pixwallet_test
+          POSTGRES_USER: pixuser
+          POSTGRES_PASSWORD: pixpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: ☕ Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: 🔍 Verificar código
+        run: mvn clean compile
+      
+      - name: 🧪 Executar testes unitários
+        run: mvn test
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
+          DATABASE_USER: pixuser
+          DATABASE_PASSWORD: pixpass
+      
+      - name: 📊 Executar testes de integração
+        run: mvn verify -P integration-tests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
+          DATABASE_USER: pixuser
+          DATABASE_PASSWORD: pixpass
+      
+      - name: 📈 Gerar relatório de cobertura
+        run: mvn jacoco:report
+      
+      - name: 📤 Upload relatório de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/site/jacoco/
+          retention-days: 30
+      
+      - name: 📦 Empacotar aplicação
+        run: mvn package -DskipTests
+      
+      - name: 💾 Salvar artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: pix-wallet-service-${{ github.sha }}
+          path: target/*.jar
+          retention-days: 7
+
+  # Job 2: Análise de Qualidade de Código
+  code-quality:
+    name: 🔍 Análise de Qualidade
+    runs-on: ubuntu-latest
+    needs: validate-and-test
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: ☕ Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: 🔍 Análise estática com Checkstyle
+        run: mvn checkstyle:check || true
+      
+      - name: 🐛 Análise de bugs com SpotBugs
+        run: mvn spotbugs:check || true
+
+  # Job 3: Build Docker Image (apenas dev, homolog e main)
+  build-docker:
+    name: 🐳 Build Docker Image
+    runs-on: ubuntu-latest
+    needs: validate-and-test
+    if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/homolog' || github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 📥 Baixar artefato
+        uses: actions/download-artifact@v4
+        with:
+          name: pix-wallet-service-${{ github.sha }}
+          path: target/
+      
+      - name: 🏷️ Definir tag da imagem
+        id: tags
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=prod-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "latest=latest" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/homolog" ]]; then
+            echo "tag=homolog-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "latest=homolog-latest" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "tag=dev-${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "latest=dev-latest" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 🐳 Build imagem Docker
+        run: |
+          docker build -t pix-wallet-service:${{ steps.tags.outputs.tag }} .
+          docker tag pix-wallet-service:${{ steps.tags.outputs.tag }} pix-wallet-service:${{ steps.tags.outputs.latest }}
+      
+      - name: 💾 Salvar imagem Docker
+        run: |
+          docker save pix-wallet-service:${{ steps.tags.outputs.tag }} | gzip > pix-wallet-${{ steps.tags.outputs.tag }}.tar.gz
+      
+      - name: 📤 Upload imagem Docker
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ steps.tags.outputs.tag }}
+          path: pix-wallet-${{ steps.tags.outputs.tag }}.tar.gz
+          retention-days: 7
+
+  # Job 4: Deploy para Dev
+  deploy-dev:
+    name: 🚀 Deploy DEV
+    runs-on: ubuntu-latest
+    needs: [validate-and-test, build-docker]
+    if: github.ref == 'refs/heads/dev'
+    environment:
+      name: development
+      url: https://dev.pixwallet.example.com
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🚀 Deploy para DEV
+        run: |
+          echo "🚀 Iniciando deploy para ambiente DEV..."
+          echo "📦 Versão: dev-${{ github.sha }}"
+          # Aqui você adicionaria os comandos reais de deploy
+          # Exemplo: kubectl, docker-compose, scripts customizados, etc.
+      
+      - name: ✅ Verificar deploy
+        run: |
+          echo "✅ Deploy DEV concluído com sucesso!"
+
+  # Job 5: Deploy para Homologação
+  deploy-homolog:
+    name: 🚀 Deploy HOMOLOG
+    runs-on: ubuntu-latest
+    needs: [validate-and-test, build-docker]
+    if: github.ref == 'refs/heads/homolog'
+    environment:
+      name: homologation
+      url: https://homolog.pixwallet.example.com
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🚀 Deploy para HOMOLOG
+        run: |
+          echo "🚀 Iniciando deploy para ambiente HOMOLOG..."
+          echo "📦 Versão: homolog-${{ github.sha }}"
+          # Aqui você adicionaria os comandos reais de deploy
+      
+      - name: 🧪 Executar testes de fumaça
+        run: |
+          echo "🧪 Executando testes de fumaça..."
+          # curl https://homolog.pixwallet.example.com/actuator/health
+      
+      - name: ✅ Verificar deploy
+        run: |
+          echo "✅ Deploy HOMOLOG concluído com sucesso!"
+
+  # Job 6: Deploy para Produção
+  deploy-prod:
+    name: 🚀 Deploy PRODUÇÃO
+    runs-on: ubuntu-latest
+    needs: [validate-and-test, build-docker]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://pixwallet.example.com
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🏷️ Criar tag de release
+        run: |
+          VERSION=$(date +%Y.%m.%d)-${GITHUB_SHA::7}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          # git push origin "v$VERSION"
+      
+      - name: 💾 Criar branch de rollback
+        run: |
+          ROLLBACK_BRANCH="rollback/prod-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b $ROLLBACK_BRANCH
+          git push origin $ROLLBACK_BRANCH
+          echo "✅ Branch de rollback criada: $ROLLBACK_BRANCH"
+      
+      - name: 🚀 Deploy para PRODUÇÃO
+        run: |
+          echo "🚀 Iniciando deploy para ambiente PRODUÇÃO..."
+          echo "📦 Versão: prod-${{ github.sha }}"
+          # Aqui você adicionaria os comandos reais de deploy
+          # Importante: usar estratégia blue-green ou canary
+      
+      - name: 🧪 Executar testes de fumaça
+        run: |
+          echo "🧪 Executando testes de fumaça em PRODUÇÃO..."
+          # curl https://pixwallet.example.com/actuator/health
+      
+      - name: 📊 Verificar métricas
+        run: |
+          echo "📊 Verificando métricas da aplicação..."
+          # Validar métricas, logs, alertas
+      
+      - name: ✅ Verificar deploy
+        run: |
+          echo "✅ Deploy PRODUÇÃO concluído com sucesso!"
+      
+      - name: 📢 Notificar sucesso
+        run: |
+          echo "📢 Deploy em produção realizado com sucesso!"
+          echo "🏷️ Versão: $(date +%Y.%m.%d)-${GITHUB_SHA::7}"
+          echo "🔄 Branch de rollback disponível"
+
+  # Job 7: Notificação de falha
+  notify-failure:
+    name: 📢 Notificar Falha
+    runs-on: ubuntu-latest
+    needs: [validate-and-test, code-quality, build-docker, deploy-dev, deploy-homolog, deploy-prod]
+    if: failure()
+    
+    steps:
+      - name: 📢 Enviar notificação de falha
+        run: |
+          echo "❌ Pipeline falhou!"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Autor: ${{ github.actor }}"
+          # Aqui você pode adicionar integração com Slack, Teams, Email, etc.

@@ -1,0 +1,380 @@
+{
+  "info": {
+    "name": "Serviço de Carteira Pix - PT-BR",
+    "description": "Collection em português para testar o microserviço de carteira com Pix",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "walletId_alice",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "walletId_bob",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "endToEndId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Carteiras",
+      "item": [
+        {
+          "name": "1.1 Criar Carteira - Alice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 201 - Criado\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletId_alice\", jsonData.id);",
+                  "console.log(\"ID da Carteira Alice: \" + jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"alice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets"]
+            },
+            "description": "Cria uma nova carteira para o usuário Alice"
+          }
+        },
+        {
+          "name": "1.2 Criar Carteira - Bob",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 201 - Criado\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"walletId_bob\", jsonData.id);",
+                  "console.log(\"ID da Carteira Bob: \" + jsonData.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"bob\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets"]
+            },
+            "description": "Cria uma nova carteira para o usuário Bob"
+          }
+        },
+        {
+          "name": "1.3 Consultar Saldo - Alice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "balance"]
+            },
+            "description": "Consulta o saldo atual da carteira de Alice"
+          }
+        },
+        {
+          "name": "1.4 Consultar Saldo Histórico",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/balance?at=2025-01-01T00:00:00Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "balance"],
+              "query": [
+                {
+                  "key": "at",
+                  "value": "2025-01-01T00:00:00Z"
+                }
+              ]
+            },
+            "description": "Consulta o saldo da carteira em uma data específica"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Chaves Pix",
+      "item": [
+        {
+          "name": "2.1 Cadastrar Chave Pix - Email Bob",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyType\": \"EMAIL\",\n  \"keyValue\": \"bob@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_bob}}/pix-keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_bob}}", "pix-keys"]
+            },
+            "description": "Cadastra uma chave Pix do tipo EMAIL para Bob"
+          }
+        },
+        {
+          "name": "2.2 Cadastrar Chave Pix - Telefone Alice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keyType\": \"PHONE\",\n  \"keyValue\": \"+5511999999999\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/pix-keys",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "pix-keys"]
+            },
+            "description": "Cadastra uma chave Pix do tipo TELEFONE para Alice"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Transações",
+      "item": [
+        {
+          "name": "3.1 Depósito - Alice (R$ 1000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/deposit",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "deposit"]
+            },
+            "description": "Realiza um depósito de R$ 1000,00 na carteira de Alice"
+          }
+        },
+        {
+          "name": "3.2 Saque - Alice (R$ 200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 200.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId_alice}}/withdraw",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallets", "{{walletId_alice}}", "withdraw"]
+            },
+            "description": "Realiza um saque de R$ 200,00 da carteira de Alice"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Transferências Pix",
+      "item": [
+        {
+          "name": "4.1 Transferir Pix - Alice para Bob (R$ 150)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status 201 - Transferência iniciada\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"endToEndId\", jsonData.endToEndId);",
+                  "console.log(\"End-to-End ID: \" + jsonData.endToEndId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromWalletId\": \"{{walletId_alice}}\",\n  \"toPixKey\": \"bob@example.com\",\n  \"amount\": 150.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "transfers"]
+            },
+            "description": "Realiza uma transferência Pix de R$ 150,00 de Alice para Bob"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Webhooks",
+      "item": [
+        {
+          "name": "5.1 Webhook - Confirmar Transferência",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"endToEndId\": \"{{endToEndId}}\",\n  \"eventType\": \"CONFIRMED\",\n  \"occurredAt\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "webhook"]
+            },
+            "description": "Simula webhook de confirmação da transferência Pix"
+          }
+        },
+        {
+          "name": "5.2 Webhook - Rejeitar Transferência",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{$guid}}\",\n  \"endToEndId\": \"{{endToEndId}}\",\n  \"eventType\": \"REJECTED\",\n  \"occurredAt\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pix/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["pix", "webhook"]
+            },
+            "description": "Simula webhook de rejeição da transferência Pix"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Health Check",
+      "item": [
+        {
+          "name": "6.1 Verificar Saúde da Aplicação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Verifica o status de saúde da aplicação"
+          }
+        },
+        {
+          "name": "6.2 Métricas Prometheus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            },
+            "description": "Consulta métricas da aplicação no formato Prometheus"
+          }
+        }
+      ]
+    }
+  ]
+}

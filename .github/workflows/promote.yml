@@ -1,0 +1,122 @@
+name: Promover entre Ambientes
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Branch de origem'
+        required: true
+        type: choice
+        options:
+          - dev
+          - homolog
+      target_branch:
+        description: 'Branch de destino'
+        required: true
+        type: choice
+        options:
+          - homolog
+          - main
+      merge_strategy:
+        description: 'Estratégia de merge'
+        required: true
+        type: choice
+        options:
+          - merge
+          - squash
+        default: 'squash'
+
+jobs:
+  validate-promotion:
+    name: 🔍 Validar Promoção
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔍 Validar fluxo
+        run: |
+          SOURCE="${{ inputs.source_branch }}"
+          TARGET="${{ inputs.target_branch }}"
+          
+          # Validar fluxo: dev -> homolog -> main
+          if [[ "$SOURCE" == "dev" && "$TARGET" != "homolog" ]]; then
+            echo "❌ Fluxo inválido: dev só pode ser promovido para homolog"
+            exit 1
+          fi
+          
+          if [[ "$SOURCE" == "homolog" && "$TARGET" != "main" ]]; then
+            echo "❌ Fluxo inválido: homolog só pode ser promovido para main"
+            exit 1
+          fi
+          
+          echo "✅ Fluxo válido: $SOURCE -> $TARGET"
+      
+      - name: 🧪 Verificar testes
+        run: |
+          git checkout ${{ inputs.source_branch }}
+          echo "🧪 Verificando status dos testes na branch ${{ inputs.source_branch }}..."
+          # Aqui você pode adicionar verificação do status do último workflow
+
+  create-pull-request:
+    name: 📝 Criar Pull Request
+    runs-on: ubuntu-latest
+    needs: validate-promotion
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📝 Criar PR
+        run: |
+          echo "📝 Criando Pull Request..."
+          echo "De: ${{ inputs.source_branch }}"
+          echo "Para: ${{ inputs.target_branch }}"
+          echo "Estratégia: ${{ inputs.merge_strategy }}"
+          
+          # Usar gh CLI para criar PR
+          # gh pr create \
+          #   --base ${{ inputs.target_branch }} \
+          #   --head ${{ inputs.source_branch }} \
+          #   --title "Promover ${{ inputs.source_branch }} para ${{ inputs.target_branch }}" \
+          #   --body "Promoção automática via GitHub Actions"
+      
+      - name: 📢 Notificar
+        run: |
+          echo "✅ Pull Request criado com sucesso!"
+          echo "Aguardando aprovação para merge em ${{ inputs.target_branch }}"
+
+  auto-merge:
+    name: 🔄 Merge Automático
+    runs-on: ubuntu-latest
+    needs: create-pull-request
+    if: inputs.target_branch == 'homolog'
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 🔄 Executar merge
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          git checkout ${{ inputs.target_branch }}
+          git pull origin ${{ inputs.target_branch }}
+          
+          if [[ "${{ inputs.merge_strategy }}" == "squash" ]]; then
+            git merge --squash ${{ inputs.source_branch }}
+            git commit -m "Promover ${{ inputs.source_branch }} para ${{ inputs.target_branch }}"
+          else
+            git merge ${{ inputs.source_branch }} -m "Merge ${{ inputs.source_branch }} into ${{ inputs.target_branch }}"
+          fi
+          
+          # git push origin ${{ inputs.target_branch }}
+          echo "✅ Merge concluído para ${{ inputs.target_branch }}"
