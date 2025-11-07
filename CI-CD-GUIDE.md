@@ -1,248 +1,184 @@
-# 🚀 Guia de CI/CD - Carteira Pix
+# 🚀 Guia CI/CD - Carteira Pix
 
 ## 📋 Visão Geral
 
-Este projeto utiliza GitHub Actions para implementar um pipeline completo de CI/CD com o seguinte fluxo:
+Este projeto utiliza **GitHub Actions** para automatizar a validação de código através de Pull Requests. O workflow executa **apenas testes** e não realiza builds Docker ou deploys automáticos.
+
+## 🔄 Fluxo de Trabalho
+
+### Estrutura de Branches
 
 ```
-feature/* → dev → homolog → main (produção)
-                                   ↓
-                            rollback branches
+feature/* ──► dev ──► homolog ──► main
+   │           │         │          │
+   └─ Desenvolvimento    │     Produção
+                    Homologação
 ```
 
-## 🌳 Estratégia de Branches
+### Regras de Fluxo
 
-### Branches Principais
+1. **feature/\* → dev**: Novas funcionalidades e correções
+2. **dev → homolog**: Promoção para homologação após testes em dev
+3. **homolog → main**: Promoção para produção após validação em homolog
 
-| Branch | Ambiente | Proteção | Deploy Automático |
-|--------|----------|----------|-------------------|
-| `feature/*` | - | ❌ Não | ❌ Não |
-| `dev` | Development | ✅ Sim | ✅ Sim |
-| `homolog` | Homologação | ✅✅ Sim | ✅ Sim |
-| `main` | Produção | ✅✅✅ Sim | ✅ Sim |
-| `rollback/*` | Produção | 🔒 Somente Leitura | - |
+⚠️ **IMPORTANTE**: PRs só são aceitos seguindo este fluxo!
 
-### Fluxo de Trabalho
+## 🧪 Pipeline de Validação
 
-#### 1. Desenvolvimento de Feature
+O pipeline é **disparado automaticamente** quando um Pull Request é:
+- Aberto (`opened`)
+- Atualizado (`synchronize`)
+- Reaberto (`reopened`)
+- Marcado como pronto para revisão (`ready_for_review`)
+
+### Jobs Executados
+
+#### 1️⃣ Validação do Fluxo de Branches
+- ✅ Verifica se o PR segue o fluxo correto
+- ✅ Valida a branch de origem e destino
+- ⏱️ Duração: ~5 segundos
+
+#### 2️⃣ Execução de Testes
+- ✅ Testes unitários (`mvn test`)
+- ✅ Testes de integração (`mvn verify`)
+- ✅ Relatório de cobertura (JaCoCo)
+- 🐘 PostgreSQL 15 (container de teste)
+- ⏱️ Duração: ~2-5 minutos
+
+#### 3️⃣ Análise de Qualidade
+- ✅ Checkstyle (análise estática)
+- ✅ SpotBugs (detecção de bugs)
+- ⏱️ Duração: ~1-2 minutos
+
+#### 4️⃣ Resumo e Aprovação
+- ✅ Consolida resultados de todos os jobs
+- ✅ Gera relatório final
+- ✅ Notifica sucesso ou falha
+
+## 🎯 Como Usar
+
+### 1. Criar uma Feature Branch
 
 ```bash
-# Criar branch de feature a partir de dev
+# Certificar-se de estar na branch dev atualizada
 git checkout dev
 git pull origin dev
-git checkout -b feature/nome-da-feature
 
-# Desenvolver e commitar
+# Criar nova feature
+git checkout -b feature/minha-funcionalidade
+```
+
+### 2. Desenvolver e Commitar
+
+```bash
+# Fazer alterações no código
 git add .
-git commit -m "feat: implementar nova funcionalidade"
-
-# Push para GitHub
-git push origin feature/nome-da-feature
+git commit -m "feat: adicionar nova funcionalidade"
 ```
 
-**O que acontece:**
-- ✅ Pipeline executa testes automaticamente
-- ✅ Valida qualidade do código
-- ✅ Gera relatório de cobertura
-
-#### 2. Promoção para DEV
+### 3. Enviar para o GitHub
 
 ```bash
-# Criar Pull Request: feature/* → dev
-# Via GitHub UI ou:
-gh pr create --base dev --head feature/nome-da-feature
+# Push da feature branch
+git push -u origin feature/minha-funcionalidade
 ```
 
-**O que acontece:**
-- ✅ Validação de testes
-- ✅ Análise de código
-- ✅ Build da aplicação
-- ✅ Deploy automático em DEV após merge
+### 4. Abrir Pull Request
 
-#### 3. Promoção para HOMOLOG
+1. Acesse o repositório no GitHub
+2. Clique em **"Compare & pull request"**
+3. **Base branch**: `dev`
+4. **Compare branch**: `feature/minha-funcionalidade`
+5. Preencha:
+   - **Título**: Descrição clara e objetiva
+   - **Descrição**: Detalhes das mudanças, motivação, impacto
+6. Clique em **"Create pull request"**
 
-```bash
-# Opção A: Workflow manual
-# GitHub → Actions → "Promover entre Ambientes"
-# Source: dev, Target: homolog
+### 5. Aguardar Validação Automática
 
-# Opção B: Pull Request
-gh pr create --base homolog --head dev
-```
+O GitHub Actions irá:
+- ⚙️ Validar o fluxo de branches
+- 🧪 Executar todos os testes
+- 🔍 Analisar qualidade do código
+- 📊 Gerar relatório de cobertura
 
-**O que acontece:**
-- ✅ Validação completa de testes
-- ✅ Build Docker image
-- ✅ Deploy automático em HOMOLOG
-- ✅ Testes de fumaça
+**Status possíveis:**
+- ✅ **Checks passed**: Tudo OK, pronto para revisão
+- ❌ **Checks failed**: Corrija os erros e faça novo push
 
-#### 4. Promoção para PRODUÇÃO
+### 6. Revisão Manual
 
-```bash
-# Pull Request: homolog → main
-gh pr create --base main --head homolog --title "Release v1.0.0"
-```
+Após aprovação automática:
+- 👥 Solicitar revisão de código de um colega
+- 💬 Responder aos comentários
+- ✏️ Fazer ajustes se necessário
 
-**O que acontece:**
-- ✅ Validação rigorosa
-- ✅ Requer 2 aprovações
-- ✅ Build Docker image com tag de produção
-- ✅ **Criação automática de branch de rollback**
-- ✅ Deploy em produção com estratégia blue-green
-- ✅ Verificação de métricas
-- ✅ Criação de tag de release
+### 7. Merge do PR
 
-## 🔄 Rollback
+Após aprovação manual:
+- ✅ Clicar em **"Merge pull request"**
+- 🎯 Escolher estratégia: **"Squash and merge"** (recomendado)
+- 🗑️ Deletar a branch feature após merge
 
-### Quando Usar Rollback
+## 🔐 Configuração de Ambientes (GitHub)
 
-Use rollback quando:
-- ❌ Deploy causou problemas em produção
-- ❌ Bugs críticos detectados
-- ❌ Performance degradada
-- ❌ Incidentes de segurança
+### Ambientes Necessários
 
-### Como Executar Rollback
+Configure em: **Settings → Environments**
 
-1. **Via GitHub Actions (Recomendado)**
+#### 1. Development
+- **Nome**: `development`
+- **URL**: `https://dev.pixwallet.example.com`
+- **Proteção**: Nenhuma (deploy automático)
 
-```
-GitHub → Actions → "Rollback para Produção" → Run workflow
-- Selecionar branch: rollback/prod-20251107-120000
-- Informar motivo: "Bug crítico no processo de transferência"
-- Executar
-```
+#### 2. Homologation
+- **Nome**: `homologation`
+- **URL**: `https://homolog.pixwallet.example.com`
+- **Proteção**: 
+  - ✅ Required reviewers: 1 pessoa
+  - ⏱️ Wait timer: 0 minutos
 
-2. **Manual (Emergência)**
+#### 3. Production
+- **Nome**: `production`
+- **URL**: `https://pixwallet.example.com`
+- **Proteção**:
+  - ✅ Required reviewers: 2 pessoas
+  - ⏱️ Wait timer: 5 minutos
+  - 🔒 Branch restriction: apenas `main`
 
-```bash
-# Listar branches de rollback disponíveis
-git branch -r | grep rollback/prod
+### Como Configurar Revisores (GRATUITO)
 
-# Fazer rollback para versão anterior
-git checkout rollback/prod-20251107-120000
-git checkout -b hotfix/emergency-rollback
-git push origin hotfix/emergency-rollback
+GitHub Free permite configurar **Environment protection rules**:
 
-# Criar PR para main
-gh pr create --base main --head hotfix/emergency-rollback --title "🚨 ROLLBACK EMERGENCIAL"
-```
+1. Acesse **Settings → Environments**
+2. Clique no ambiente (ex: `production`)
+3. Marque **"Required reviewers"**
+4. Adicione os revisores (até 6 no plano gratuito)
+5. Salve as configurações
 
-**O que acontece no rollback:**
-- ✅ Validação da branch de rollback
-- ✅ Build da versão anterior
-- ✅ Deploy da versão anterior
-- ✅ Verificação de saúde
-- ✅ Atualização da branch main
-- ✅ Criação de issue de incidente
-- ✅ Notificação da equipe
+Quando um deploy para produção for iniciado:
+- 🔔 Revisores receberão notificação
+- ⏸️ Deploy ficará aguardando aprovação
+- ✅ Após aprovação, deploy prossegue
+- ❌ Se rejeitado, deploy é cancelado
 
-## 📊 Workflows Disponíveis
+## 📊 Monitoramento
 
-### 1. CI/CD Pipeline (Automático)
-**Arquivo:** `.github/workflows/ci-cd-pipeline.yml`
+### Visualizar Execuções
 
-**Triggers:**
-- Push em: `feature/*`, `dev`, `homolog`, `main`
-- Pull Request para: `dev`, `homolog`, `main`
+1. Acesse a aba **"Actions"** no GitHub
+2. Selecione o workflow **"🧪 Validação de Pull Request"**
+3. Clique na execução desejada
+4. Visualize os logs de cada job
 
-**Jobs:**
-1. ✅ Validação e Testes
-2. 🔍 Análise de Qualidade
-3. 🐳 Build Docker Image
-4. 🚀 Deploy DEV
-5. 🚀 Deploy HOMOLOG
-6. 🚀 Deploy PRODUÇÃO
-7. 📢 Notificações
+### Artefatos Gerados
 
-### 2. Rollback (Manual)
-**Arquivo:** `.github/workflows/rollback.yml`
+- **Relatório de Cobertura**: Disponível para download por 30 dias
+- **Logs de Testes**: Visualize falhas e erros diretamente nos logs
 
-**Como executar:**
-```
-Actions → Rollback para Produção → Run workflow
-```
+## 🐛 Troubleshooting
 
-**Parâmetros:**
-- `rollback_branch`: Branch de rollback
-- `reason`: Motivo do rollback
-
-### 3. Promover entre Ambientes (Manual)
-**Arquivo:** `.github/workflows/promote.yml`
-
-**Como executar:**
-```
-Actions → Promover entre Ambientes → Run workflow
-```
-
-**Parâmetros:**
-- `source_branch`: dev ou homolog
-- `target_branch`: homolog ou main
-- `merge_strategy`: merge ou squash
-
-### 4. Proteção de Branches (Automático)
-**Arquivo:** `.github/workflows/branch-protection.yml`
-
-**Triggers:**
-- Pull Requests para `dev`, `homolog`, `main`
-
-**Validações:**
-- ✅ Origem do PR
-- ✅ Título do PR (conventional commits)
-- ✅ Cobertura de testes
-- ✅ Número de aprovações
-
-## 🔒 Regras de Proteção
-
-### Branch `dev`
-- ✅ Requer PR
-- ✅ Requer 1 aprovação
-- ✅ Requer testes passando
-- ❌ Não permite force push
-- ✅ Permite de: `feature/*`
-
-### Branch `homolog`
-- ✅ Requer PR
-- ✅ Requer 1 aprovação
-- ✅ Requer testes passando
-- ✅ Requer análise de código
-- ❌ Não permite force push
-- ✅ Permite de: `dev`
-
-### Branch `main`
-- ✅ Requer PR
-- ✅ Requer 2 aprovações
-- ✅ Requer testes passando
-- ✅ Requer análise de código
-- ✅ Requer aprovação de code owners
-- ❌ Não permite force push
-- ✅ Permite apenas de: `homolog`
-- ✅ Cria branch de rollback automaticamente
-
-### Branches `rollback/*`
-- 🔒 Somente leitura
-- 🔒 Criadas automaticamente no deploy
-- 🔒 Nunca devem ser deletadas
-- 🔒 Usadas apenas para rollback
-
-## 📈 Métricas e Monitoramento
-
-### Métricas Coletadas
-
-- ✅ Tempo de build
-- ✅ Taxa de sucesso dos deploys
-- ✅ Cobertura de testes
-- ✅ Número de rollbacks
-- ✅ Tempo médio de recovery
-
-### Dashboards
-
-- **GitHub Actions**: Ver histórico de execuções
-- **Artifacts**: Logs, relatórios de cobertura, imagens Docker
-
-## 🚨 Troubleshooting
-
-### Pipeline falhou nos testes
+### ❌ Testes Falhando
 
 ```bash
 # Rodar testes localmente
@@ -250,98 +186,124 @@ mvn clean test
 
 # Ver logs detalhados
 mvn test -X
+
+# Testar com PostgreSQL local
+docker-compose up -d postgres
+mvn test
 ```
 
-### Deploy falhou
+### ❌ Fluxo de Branches Inválido
+
+```
+Erro: PRs para 'dev' devem vir de branches 'feature/*'
+```
+
+**Solução**: Certifique-se de estar criando a feature a partir da branch correta:
+```bash
+git checkout dev
+git pull origin dev
+git checkout -b feature/nome-da-feature
+```
+
+### ❌ Compilação Falhando
 
 ```bash
-# Verificar logs do workflow
-GitHub → Actions → Selecionar run → Ver logs
+# Limpar cache do Maven
+mvn clean
 
-# Verificar saúde do ambiente
-curl https://[ambiente].pixwallet.example.com/actuator/health
+# Recompilar
+mvn clean compile
+
+# Verificar dependências
+mvn dependency:tree
 ```
 
-### Rollback necessário
+## 📝 Boas Práticas
 
-```bash
-# Ver branches de rollback disponíveis
-git branch -r | grep rollback/prod
+### Commits
 
-# Executar workflow de rollback via UI
-GitHub → Actions → Rollback para Produção
+Use **Conventional Commits**:
+```
+feat: adicionar endpoint de consulta de saldo
+fix: corrigir validação de CPF
+chore: atualizar dependências
+docs: atualizar documentação da API
+test: adicionar testes unitários para Wallet
+refactor: simplificar lógica de transferência
 ```
 
-## 📝 Convenções
+### Pull Requests
 
-### Mensagens de Commit
+✅ **Bom PR**:
+- Título claro e objetivo
+- Descrição detalhada
+- Mudanças focadas e pequenas
+- Testes incluídos
+- Sem conflitos
 
-Seguir [Conventional Commits](https://www.conventionalcommits.org/):
+❌ **PR problemático**:
+- Título vago ("fix bugs")
+- Sem descrição
+- Muitas mudanças não relacionadas
+- Sem testes
+- Conflitos de merge
 
+### Branches
+
+✅ **Nomes claros**:
 ```
-feat: adiciona nova funcionalidade
-fix: corrige bug crítico
-chore: atualiza dependências
-docs: atualiza documentação
-refactor: refatora código
-test: adiciona testes
-style: formatação de código
-perf: melhoria de performance
-ci: mudanças no CI/CD
-```
-
-### Nomenclatura de Branches
-
-```
-feature/nome-da-feature       # Nova funcionalidade
-fix/nome-do-bug              # Correção de bug
-chore/nome-da-tarefa         # Tarefas gerais
-docs/nome-da-doc             # Documentação
-hotfix/nome-do-hotfix        # Correção urgente em produção
+feature/adicionar-webhook-pix
+feature/melhorar-validacao-cpf
+fix/corrigir-calculo-saldo
 ```
 
-### Tags de Release
-
+❌ **Nomes vagos**:
 ```
-v2025.11.07                  # Release de produção
-v2025.11.07-hotfix.1        # Hotfix
+feature/update
+fix/bug
+test123
 ```
 
-## 🎯 Checklist de Deploy
+## 🚀 Próximos Passos
 
-### Antes do Deploy
+### Deploy Manual (Futuro)
 
-- [ ] Todos os testes passando
-- [ ] Code review aprovado
-- [ ] Documentação atualizada
-- [ ] Changelog atualizado
-- [ ] Variáveis de ambiente configuradas
-- [ ] Database migrations testadas
+Quando estiver pronto para implementar deploys automáticos:
 
-### Durante o Deploy
+1. **Configurar Secrets**:
+   - `DOCKER_USERNAME`
+   - `DOCKER_PASSWORD`
+   - Chaves SSH para servidores
+   - Tokens de API
 
-- [ ] Monitorar logs
-- [ ] Verificar métricas
-- [ ] Executar testes de fumaça
-- [ ] Verificar saúde da aplicação
+2. **Adicionar Job de Build Docker**:
+   - Build da imagem
+   - Push para Docker Hub
+   - Versionamento com tags
 
-### Após o Deploy
+3. **Adicionar Jobs de Deploy**:
+   - Deploy para dev (automático)
+   - Deploy para homolog (com aprovação)
+   - Deploy para prod (com aprovação + rollback)
 
-- [ ] Verificar funcionalidades críticas
-- [ ] Monitorar alertas
-- [ ] Documentar mudanças
-- [ ] Notificar stakeholders
+## 📚 Recursos Adicionais
 
-## 📞 Suporte
+- [GitHub Actions Documentation](https://docs.github.com/actions)
+- [Maven Surefire Plugin](https://maven.apache.org/surefire/maven-surefire-plugin/)
+- [JaCoCo Coverage](https://www.jacoco.org/jacoco/trunk/doc/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
 
-Em caso de problemas:
+## 🆘 Suporte
 
-1. Verificar logs do GitHub Actions
-2. Consultar documentação
-3. Contatar time de DevOps
-4. Em emergência: executar rollback
+Problemas com o CI/CD?
+1. Verifique os logs no GitHub Actions
+2. Execute os testes localmente
+3. Consulte a documentação do projeto
+4. Abra uma issue no repositório
 
 ---
 
-**Última Atualização:** 07/11/2025
-**Mantido por:** Equipe DevOps
+✅ **Pipeline configurado e pronto para uso!**
+🧪 **Testes executados automaticamente em cada PR**
+📊 **Relatórios de cobertura disponíveis**
+🔒 **Aprovações manuais configuráveis (GitHub Free)**

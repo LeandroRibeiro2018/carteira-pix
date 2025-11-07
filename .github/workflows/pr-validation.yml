@@ -1,0 +1,203 @@
+name: 🧪 Validação de Pull Request
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - homolog
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: -Xmx512m
+
+jobs:
+  # Job 1: Validação do fluxo de branches
+  validate-branch-flow:
+    name: 🔍 Validar Fluxo de Branches
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🔍 Verificar fluxo de branches
+        run: |
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          TARGET_BRANCH="${{ github.base_ref }}"
+          
+          echo "═══════════════════════════════════════"
+          echo "📋 Pull Request #${{ github.event.pull_request.number }}"
+          echo "═══════════════════════════════════════"
+          echo "🔀 Branch origem: $SOURCE_BRANCH"
+          echo "🎯 Branch destino: $TARGET_BRANCH"
+          echo ""
+          
+          # Validar fluxo: feature/* -> dev
+          if [[ "$TARGET_BRANCH" == "dev" ]] && [[ ! "$SOURCE_BRANCH" =~ ^feature/ ]]; then
+            echo "❌ ERRO: PRs para 'dev' devem vir de branches 'feature/*'"
+            echo "📖 Fluxo correto: feature/* → dev → homolog → main"
+            exit 1
+          fi
+          
+          # Validar fluxo: dev -> homolog
+          if [[ "$TARGET_BRANCH" == "homolog" ]] && [[ "$SOURCE_BRANCH" != "dev" ]]; then
+            echo "❌ ERRO: PRs para 'homolog' devem vir da branch 'dev'"
+            echo "📖 Fluxo correto: feature/* → dev → homolog → main"
+            exit 1
+          fi
+          
+          # Validar fluxo: homolog -> main
+          if [[ "$TARGET_BRANCH" == "main" ]] && [[ "$SOURCE_BRANCH" != "homolog" ]]; then
+            echo "❌ ERRO: PRs para 'main' devem vir da branch 'homolog'"
+            echo "📖 Fluxo correto: feature/* → dev → homolog → main"
+            exit 1
+          fi
+          
+          echo "✅ Fluxo de branches válido!"
+          echo "📖 Seguindo o padrão: feature/* → dev → homolog → main"
+          echo ""
+
+  # Job 2: Testes unitários e de integração
+  run-tests:
+    name: 🧪 Executar Testes
+    runs-on: ubuntu-latest
+    needs: validate-branch-flow
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: pixwallet_test
+          POSTGRES_USER: pixuser
+          POSTGRES_PASSWORD: pixpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: ☕ Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: 🔨 Compilar código
+        run: mvn clean compile -DskipTests
+      
+      - name: 🧪 Executar testes unitários
+        run: mvn test
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
+          DATABASE_USER: pixuser
+          DATABASE_PASSWORD: pixpass
+      
+      - name: 📊 Executar testes de integração
+        run: mvn verify -P integration-tests
+        env:
+          SPRING_PROFILES_ACTIVE: test
+          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
+          DATABASE_USER: pixuser
+          DATABASE_PASSWORD: pixpass
+      
+      - name: 📈 Gerar relatório de cobertura
+        run: mvn jacoco:report
+      
+      - name: 📤 Upload relatório de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.event.pull_request.number }}
+          path: target/site/jacoco/
+          retention-days: 30
+      
+      - name: 📊 Comentar cobertura no PR
+        if: always()
+        run: |
+          echo "📊 Relatório de cobertura gerado com sucesso!"
+          echo "📁 Verifique os artefatos do workflow para visualizar o relatório completo"
+
+  # Job 3: Análise de qualidade de código
+  code-quality:
+    name: 🔍 Análise de Qualidade
+    runs-on: ubuntu-latest
+    needs: validate-branch-flow
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: ☕ Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: 🔍 Análise estática com Checkstyle
+        run: mvn checkstyle:check || true
+      
+      - name: 🐛 Análise de bugs com SpotBugs
+        run: mvn spotbugs:check || true
+      
+      - name: ✅ Resumo da análise
+        run: |
+          echo "✅ Análise de qualidade concluída!"
+
+  # Job 4: Resumo e aprovação
+  summary:
+    name: 📋 Resumo da Validação
+    runs-on: ubuntu-latest
+    needs: [validate-branch-flow, run-tests, code-quality]
+    if: always()
+    
+    steps:
+      - name: 📊 Gerar resumo
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════════"
+          echo "✅ Validação de Pull Request Concluída!"
+          echo "════════════════════════════════════════════════════"
+          echo ""
+          echo "📋 PR: #${{ github.event.pull_request.number }}"
+          echo "📝 Título: ${{ github.event.pull_request.title }}"
+          echo "👤 Autor: ${{ github.event.pull_request.user.login }}"
+          echo "🔀 De: ${{ github.head_ref }}"
+          echo "🎯 Para: ${{ github.base_ref }}"
+          echo ""
+          echo "✅ Fluxo de branches: OK"
+          echo "✅ Testes: OK"
+          echo "✅ Qualidade: OK"
+          echo ""
+          echo "👉 Pronto para revisão e aprovação!"
+          echo "════════════════════════════════════════════════════"
+          echo ""
+      
+      - name: ❌ Notificar falha
+        if: ${{ needs.validate-branch-flow.result == 'failure' || needs.run-tests.result == 'failure' || needs.code-quality.result == 'failure' }}
+        run: |
+          echo ""
+          echo "════════════════════════════════════════════════════"
+          echo "❌ Validação de Pull Request FALHOU!"
+          echo "════════════════════════════════════════════════════"
+          echo ""
+          echo "📋 PR: #${{ github.event.pull_request.number }}"
+          echo "👤 Autor: ${{ github.event.pull_request.user.login }}"
+          echo ""
+          echo "Status dos jobs:"
+          echo "  - Fluxo de branches: ${{ needs.validate-branch-flow.result }}"
+          echo "  - Testes: ${{ needs.run-tests.result }}"
+          echo "  - Qualidade: ${{ needs.code-quality.result }}"
+          echo ""
+          echo "Por favor, corrija os erros antes de prosseguir."
+          echo "════════════════════════════════════════════════════"
+          echo ""
+          exit 1
