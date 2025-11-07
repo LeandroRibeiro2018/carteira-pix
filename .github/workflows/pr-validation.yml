@@ -62,21 +62,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-branch-flow
     
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: pixwallet_test
-          POSTGRES_USER: pixuser
-          POSTGRES_PASSWORD: pixpass
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    
     steps:
       - name: 📥 Checkout código
         uses: actions/checkout@v4
@@ -95,17 +80,11 @@ jobs:
         run: mvn test
         env:
           SPRING_PROFILES_ACTIVE: test
-          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
-          DATABASE_USER: pixuser
-          DATABASE_PASSWORD: pixpass
       
       - name: 📊 Executar testes de integração
         run: mvn verify -P integration-tests
         env:
           SPRING_PROFILES_ACTIVE: test
-          DATABASE_URL: jdbc:postgresql://localhost:5432/pixwallet_test
-          DATABASE_USER: pixuser
-          DATABASE_PASSWORD: pixpass
       
       - name: 📈 Gerar relatório de cobertura
         run: mvn jacoco:report
