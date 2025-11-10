@@ -1,103 +1,153 @@
 # Pix Wallet Service - Documentação Completa
 
-## 📋 Índice
-1. [Visão Geral](#visão-geral)
-2. [Requisitos Atendidos](#requisitos-atendidos)
-3. [Arquitetura](#arquitetura)
-4. [Decisões de Design](#decisões-de-design)
-5. [Stack Tecnológica](#stack-tecnológica)
-6. [Estrutura do Projeto](#estrutura-do-projeto)
-7. [Garantias de Consistência](#garantias-de-consistência)
-8. [Diagramas de Arquitetura](#diagramas-de-arquitetura)
-9. [Como Executar](#como-executar)
-10. [Guia de Deploy](#guia-de-deploy)
-11. [Testes Manuais](#testes-manuais)
-12. [Exemplos de API](#exemplos-de-api)
-13. [FAQ](#faq)
-14. [Análise de Problemas e Erros](#análise-de-problemas-e-erros)
+Bem-vindo! 👋 Esta é a documentação do nosso serviço de carteira digital com suporte a transferências Pix. Criamos este guia pensando em você, desenvolvedor, que precisa entender rapidamente como tudo funciona.
 
 ---
 
-## 🎯 Visão Geral
+## 📋 O que você vai encontrar aqui
 
-Microserviço de carteira digital com suporte a transferências Pix, desenvolvido como code assessment focado em **produção real** com garantias de consistência, concorrência e idempotência.
+1. [O que é este projeto?](#-o-que-%C3%A9-este-projeto)
 
-### Objetivo
+2. [O que ele faz?](#-o-que-ele-faz)
+
+3. [Como funciona por dentro](#-como-funciona-por-dentro)
+
+4. [Por que fizemos assim?](#-por-que-fizemos-assim)
+
+5. [Tecnologias que usamos](#%EF%B8%8F-tecnologias-que-usamos)
+
+6. [Como está organizado](#-como-est%C3%A1-organizado)
+
+7. [Como garantimos que tudo funcione direitinho](#-como-garantimos-que-tudo-funcione-direitinho)
+
+8. [Diagramas para visualizar](#-diagramas-para-visualizar)
+
+9. [Rodando o projeto](#-rodando-o-projeto)
+
+10. [Colocando em produção](#-colocando-em-produ%C3%A7%C3%A3o)
+
+11. [Testando na mão](#-testando-na-m%C3%A3o)
+
+12. [Exemplos práticos de uso](#-exemplos-pr%C3%A1ticos-de-uso)
+
+13. [Dúvidas frequentes](#-d%C3%BAvidas-frequentes)
+
+14. [Problemas comuns e soluções](#-problemas-comuns-e-solu%C3%A7%C3%B5es)
+
+---
+
+## 🎯 O que é este projeto?
+
+Este é um microserviço de carteira digital que permite fazer transferências via Pix. Ele foi desenvolvido pensando em **produção real**, com todas as garantias que um sistema financeiro precisa ter.
+
+### O que queríamos alcançar
 
 Criar um sistema de carteira que garanta:
-- ✅ **Exactly-once semantics** em transferências
-- ✅ **Consistência** sob alta concorrência
-- ✅ **Idempotência** em todas as operações críticas
-- ✅ **Auditabilidade** completa através de ledger imutável
-- ✅ **Observabilidade** com logs estruturados e métricas
+
+* ✅ **Nenhuma transferência duplicada** - mesmo que o usuário clique duas vezes
+
+* ✅ **Dados sempre consistentes** - mesmo com milhares de pessoas usando ao mesmo tempo
+
+* ✅ **Operações que podem ser repetidas sem problema** - se algo falhar, podemos tentar de novo
+
+* ✅ **Histórico completo de tudo** - para auditorias e compliance
+
+* ✅ **Fácil de monitorar** - logs estruturados e métricas em tempo real
 
 ---
 
-## ✅ Requisitos Atendidos
+## ✅ O que ele faz?
 
-### Requisitos Funcionais
-- ✅ Criar Conta/Carteira
-- ✅ Registrar Chave Pix (EMAIL, PHONE, CPF, EVP)
-- ✅ Consultar Saldo Atual
-- ✅ Saldo Histórico (timestamp passado)
-- ✅ Depósito
-- ✅ Saque
-- ✅ Transferência Pix com endToEndId
-- ✅ Webhook Pix (CONFIRMED/REJECTED)
+### Funcionalidades principais
 
-### Requisitos Não-Funcionais
-- ✅ **Exactly-once semantics**: Idempotency-Key + constraints únicas
-- ✅ **Rastreabilidade/Auditoria**: Ledger imutável de todas operações
-- ✅ **Concorrência**: Pessimistic locking + optimistic locking
-- ✅ **Idempotência**: Implementada em todos endpoints críticos
-- ✅ **Observabilidade**: Logs estruturados + métricas Prometheus
+* ✅ **Criar conta/carteira** - cada usuário tem sua carteira digital
 
-### Cenários de Concorrência Cobertos
-- ✅ Duplo disparo: Mesmo Idempotency-Key → um único débito
-- ✅ Webhook duplicado: Mesmo eventId → aplicar uma vez
-- ✅ Ordem trocada: State machine garante consistência
-- ✅ Reprocesso: At-least-once sem mudar saldo final
+* ✅ **Registrar chave Pix** - EMAIL, TELEFONE, CPF ou chave aleatória
+
+* ✅ **Consultar saldo atual** - quanto você tem agora
+
+* ✅ **Consultar saldo histórico** - quanto você tinha em qualquer momento do passado
+
+* ✅ **Fazer depósitos** - adicionar dinheiro na carteira
+
+* ✅ **Fazer saques** - retirar dinheiro da carteira
+
+* ✅ **Transferir via Pix** - enviar dinheiro para outras pessoas
+
+* ✅ **Receber confirmações** - webhook que confirma ou rejeita transferências
+
+### Garantias técnicas
+
+* ✅ **Sem duplicação** - mesmo clicando 100 vezes, só processa uma vez
+
+* ✅ **Rastreável** - todo centavo tem histórico completo
+
+* ✅ **Seguro em concorrência** - milhares de operações simultâneas sem problema
+
+* ✅ **Idempotente** - pode repetir a operação que o resultado é o mesmo
+
+* ✅ **Observável** - você sabe exatamente o que está acontecendo
+
+### Cenários que tratamos
+
+* ✅ **Duplo clique** - usuário clica duas vezes no botão → só debita uma vez
+
+* ✅ **Webhook duplicado** - recebemos a mesma confirmação duas vezes → só credita uma vez
+
+* ✅ **Ordem trocada** - webhooks chegam fora de ordem → sistema se organiza
+
+* ✅ **Retry automático** - falhou? Tenta de novo sem bagunçar nada
 
 ---
 
-## 🏗️ Arquitetura
+## 🏗️ Como funciona por dentro
 
-### Clean Architecture (4 Camadas)
+### Arquitetura Limpa (Clean Architecture)
 
-O projeto segue **Clean Architecture** com separação clara de responsabilidades:
+Organizamos o código em 4 camadas bem separadas:
 
 ```
-Domain (Entities + Business Rules)
+Domínio (Regras de negócio e entidades)
    ↓
-Application (Use Cases)
+Aplicação (Casos de uso)
    ↓
-Infrastructure (Repositories)
+Infraestrutura (Banco de dados)
    ↓
-Adapter (Controllers + DTOs)
+Adaptadores (APIs REST)
 ```
 
-### Motivação
+### Por que assim?
 
-Clean Architecture foi escolhida para garantir:
-- **Independência de frameworks**: Lógica de negócio não depende de Spring
-- **Testabilidade**: Casos de uso podem ser testados sem infraestrutura
-- **Separação de responsabilidades**: Cada camada tem papel bem definido
-- **Facilidade de manutenção**: Mudanças isoladas em camadas específicas
+Escolhemos Clean Architecture porque:
 
-### Por que não Arquitetura Tradicional (3 camadas)?
-- **Acoplamento**: Service diretamente depende de infraestrutura
-- **Testabilidade**: Difícil testar sem banco de dados
-- **Evolução**: Mudanças em infraestrutura afetam lógica de negócio
+* **Independente de frameworks** - a lógica de negócio não depende do Spring
+
+* **Fácil de testar** - podemos testar sem precisar de banco de dados
+
+* **Responsabilidades claras** - cada camada tem seu papel bem definido
+
+* **Fácil de manter** - mudanças ficam isoladas em suas camadas
+
+### Por que não fizemos do jeito tradicional?
+
+A arquitetura tradicional (Controller → Service → Repository) tem problemas:
+
+* **Muito acoplado** - Service depende diretamente do banco
+
+* **Difícil de testar** - precisa do banco para testar qualquer coisa
+
+* **Difícil de evoluir** - mudanças em infraestrutura afetam a lógica de negócio
 
 ---
 
-## 💡 Decisões de Design
+## 💡 Por que fizemos assim?
 
-### 1. Pessimistic Locking para Operações Críticas
+### 1\. Bloqueio pessimista para operações críticas
 
-**Onde**: Operações que modificam saldo (depósito, saque, transferência)
+**Onde usamos**: Sempre que mexemos no saldo (depósito, saque, transferência)
 
-**Implementação**:
+**Como funciona**:
+
 ```java
 @Lock(LockModeType.PESSIMISTIC_WRITE)
 @Query("SELECT w FROM Wallet w WHERE w.id = :id")
@@ -105,153 +155,203 @@ Optional<Wallet> findByIdWithLock(@Param("id") UUID id);
 ```
 
 **Vantagens**:
-- ✅ Garante consistência absoluta
-- ✅ Simples de entender e debugar
-- ✅ Sem risco de lost updates
+
+* ✅ Garante que ninguém mais mexe no saldo ao mesmo tempo
+
+* ✅ Simples de entender e debugar
+
+* ✅ Zero chance de perder atualizações
 
 **Desvantagens**:
-- ❌ Reduz throughput sob alta concorrência
-- ❌ Pode causar deadlocks (mitigado por ordem de locks)
 
-**Alternativas Consideradas**:
-- Optimistic locking apenas: Requer retry logic complexa
-- Distributed locks (Redis): Adiciona complexidade e ponto de falha
+* ❌ Pode ficar mais lento com muita gente ao mesmo tempo
 
-### 2. Optimistic Locking em Entidades Críticas
+* ❌ Risco de deadlock (mas a gente previne isso)
 
-**Onde**: Entidades `Wallet` e `PixTransfer`
+**Outras opções que consideramos**:
 
-**Implementação**:
+* Bloqueio otimista apenas: precisaria de lógica complexa de retry
+
+* Locks distribuídos (Redis): adiciona complexidade e mais um ponto de falha
+
+### 2\. Bloqueio otimista como segunda camada
+
+**Onde usamos**: Nas entidades `Wallet` e `PixTransfer`
+
+**Como funciona**:
+
 ```java
 @Version
 private Long version;
 ```
 
-**Uso**: Como segunda camada de defesa junto com pessimistic lock
+**Para que serve**: Funciona como uma rede de segurança junto com o bloqueio pessimista
 
 **Vantagens**:
-- ✅ Detecta conflitos que escapem do lock pessimista
-- ✅ Permite retry automático do Spring
 
-### 3. Idempotência por Idempotency-Key
+* ✅ Detecta conflitos que escapem do lock pessimista
 
-**Onde**: Todas operações críticas (transferências, depósitos, webhooks)
+* ✅ O Spring faz retry automático
 
-**Implementação**:
+### 3\. Chave de idempotência
+
+**Onde usamos**: Todas operações críticas (transferências, depósitos, webhooks)
+
+**Como funciona**:
+
 ```sql
 CREATE UNIQUE INDEX idx_idempotency_key ON pix_transfers(idempotency_key);
 CREATE UNIQUE INDEX idx_event_id ON webhook_events(event_id);
 ```
 
-**Fluxo**:
-1. Cliente envia `Idempotency-Key` no header
-2. Backend verifica se chave já existe
-3. Se existe: retorna resultado anterior
-4. Se não existe: processa e salva com a chave
+**O fluxo**:
+
+1. Cliente envia uma chave única no header `Idempotency-Key`
+
+2. Backend verifica se essa chave já foi usada
+
+3. Se já foi: retorna o resultado anterior
+
+4. Se não foi: processa e salva com essa chave
 
 **Vantagens**:
-- ✅ Exactly-once semantics garantido
-- ✅ Protege contra duplo clique, retries, network issues
-- ✅ Implementação robusta via constraint de banco
 
-### 4. Ledger Imutável (Event Sourcing Light)
+* ✅ Garante que nada é processado duas vezes
 
-**Design**: Tabela `transactions` é **append-only** (nunca atualiza/deleta registros)
+* ✅ Protege contra duplo clique, retries, problemas de rede
+
+* ✅ Implementação robusta usando constraint do banco
+
+### 4\. Livro-razão imutável (Ledger)
+
+**Como funciona**: A tabela `transactions` é **append-only** (só adiciona, nunca atualiza ou deleta)
 
 **Campos principais**:
-- `wallet_id`: Carteira afetada
-- `type`: DEPOSIT, WITHDRAWAL, PIX_IN, PIX_OUT
-- `amount`: Valor (positivo ou negativo)
-- `balance_after`: Saldo após operação
-- `created_at`: Timestamp da transação
+
+* `wallet_id`: Qual carteira foi afetada
+
+* `type`: DEPOSIT, WITHDRAWAL, PIX_IN, PIX_OUT
+
+* `amount`: Valor (positivo ou negativo)
+
+* `balance_after`: Saldo depois da operação
+
+* `created_at`: Quando aconteceu
 
 **Vantagens**:
-- ✅ **Auditoria completa**: Toda operação registrada permanentemente
-- ✅ **Saldo histórico**: Reconstruir saldo em qualquer timestamp
-- ✅ **Compliance**: Atende requisitos regulatórios (BACEN)
-- ✅ **Detecção de fraudes**: Discrepâncias são detectáveis
+
+* ✅ **Auditoria completa** - tudo fica registrado para sempre
+
+* ✅ **Saldo histórico** - podemos saber quanto tinha em qualquer momento
+
+* ✅ **Compliance** - atende requisitos do Banco Central
+
+* ✅ **Detecção de fraudes** - qualquer inconsistência é detectável
 
 **Como calcular saldo histórico**:
+
 ```sql
 SELECT SUM(amount) 
 FROM transactions 
 WHERE wallet_id = ? AND created_at <= ?
 ```
 
-### 5. State Machine para Transferências Pix
+### 5\. Máquina de estados para transferências
 
-**Estados**: `PENDING` → `CONFIRMED` ou `REJECTED`
+**Estados possíveis**: `PENDING` → `CONFIRMED` ou `REJECTED`
 
-**Transições Válidas**:
+**Transições válidas**:
+
 ```
 PENDING → CONFIRMED ✅
 PENDING → REJECTED  ✅
-CONFIRMED → REJECTED ❌ (IllegalStateException)
-REJECTED → CONFIRMED ❌ (IllegalStateException)
+CONFIRMED → REJECTED ❌ (erro!)
+REJECTED → CONFIRMED ❌ (erro!)
 ```
 
-**Implementação**:
+**Como implementamos**:
+
 ```java
 public void confirm() {
     if (status == PixTransferStatus.CONFIRMED) {
-        return; // Idempotente
+        return; // Já confirmado, tudo bem
     }
     if (status == PixTransferStatus.REJECTED) {
-        throw new IllegalStateException("Cannot confirm a rejected transfer");
+        throw new IllegalStateException("Não pode confirmar uma transferência rejeitada");
     }
     this.status = PixTransferStatus.CONFIRMED;
 }
 ```
 
 **Vantagens**:
-- ✅ Impede estados inválidos
-- ✅ Garante consistência independente da ordem de webhooks
-- ✅ Operações idempotentes
 
-### 6. Deduplicação de Webhooks
+* ✅ Impede estados inválidos
 
-**Problema**: Webhooks podem chegar duplicados ou fora de ordem
+* ✅ Garante consistência mesmo se webhooks chegarem fora de ordem
 
-**Solução**:
-- `eventId` único por webhook garante processamento único
-- Lock pessimista previne race conditions ao processar webhook
-- Webhooks duplicados ou fora de ordem são tratados corretamente
+* ✅ Operações são idempotentes
 
-**Implementação**:
+### 6\. Deduplicação de webhooks
+
+**O problema**: Webhooks podem chegar duplicados ou fora de ordem
+
+**Nossa solução**:
+
+* Cada webhook tem um `eventId` único
+
+* Bloqueio pessimista previne race conditions
+
+* Webhooks duplicados ou fora de ordem são tratados corretamente
+
+**Como implementamos**:
+
 ```java
 if (webhookEventRepository.existsByEventId(eventId)) {
-    return; // Idempotente
+    return; // Já processamos, ignora
 }
 ```
 
 ---
 
-## 🛠️ Stack Tecnológica
+## 🛠️ Tecnologias que usamos
 
 ### Backend
-- **Java 17**: LTS, performance moderna
-- **Spring Boot 3.2.0**: Framework consolidado
-- **Spring Data JPA**: Abstração de persistência
-- **Hibernate**: ORM robusto
 
-### Database
-- **PostgreSQL 15**: ACID completo, locks robustos
-- **HikariCP**: Connection pooling eficiente
+* **Java 17** - versão LTS com performance moderna
 
-### Observability
-- **Logback**: Logging estruturado
-- **Logstash Encoder**: Formato JSON para logs
-- **Micrometer + Prometheus**: Métricas e monitoring
+* **Spring Boot 3.2.0** - framework consolidado e confiável
 
-### Testing
-- **JUnit 5**: Framework de testes moderno
-- **Mockito**: Mocking de dependências
-- **Awaitility**: Testes de concorrência
-- **H2**: Banco em memória para testes
+* **Spring Data JPA** - facilita o trabalho com banco de dados
+
+* **Hibernate** - ORM robusto e maduro
+
+### Banco de dados
+
+* **PostgreSQL 15** - ACID completo, locks robustos
+
+* **HikariCP** - gerenciamento eficiente de conexões
+
+### Observabilidade
+
+* **Logback** - logs estruturados
+
+* **Logstash Encoder** - formato JSON para logs
+
+* **Micrometer + Prometheus** - métricas e monitoramento
+
+### Testes
+
+* **JUnit 5** - framework de testes moderno
+
+* **Mockito** - simula dependências nos testes
+
+* **Awaitility** - testa cenários de concorrência
+
+* **H2** - banco em memória para testes
 
 ---
 
-## 📁 Estrutura do Projeto
+## 📁 Como está organizado
 
 ```
 pix-wallet-service/
@@ -259,72 +359,84 @@ pix-wallet-service/
 │   ├── main/
 │   │   ├── java/com/pixservice/
 │   │   │   ├── domain/              # Entidades e regras de negócio
-│   │   │   │   ├── entity/          # Wallet, PixKey, Transaction, PixTransfer, etc.
+│   │   │   │   ├── entity/          # Wallet, PixKey, Transaction, etc.
 │   │   │   │   └── enums/           # Status, tipos, etc.
-│   │   │   ├── application/         # Casos de uso (Application layer)
-│   │   │   │   ├── usecase/         # CreateWallet, PixTransfer, ProcessWebhook, etc.
+│   │   │   ├── application/         # Casos de uso
+│   │   │   │   ├── usecase/         # CreateWallet, PixTransfer, etc.
 │   │   │   │   └── exception/       # Exceções de negócio
-│   │   │   ├── infrastructure/      # Camada de infraestrutura
+│   │   │   ├── infrastructure/      # Infraestrutura
 │   │   │   │   └── repository/      # Repositórios JPA
-│   │   │   └── adapter/             # Adapters (Controllers, DTOs)
+│   │   │   └── adapter/             # Adaptadores
 │   │   │       └── rest/
-│   │   │           ├── controller/  # WalletController, PixController
-│   │   │           ├── dto/         # Request/Response DTOs
-│   │   │           └── exception/   # GlobalExceptionHandler
+│   │   │           ├── controller/  # Controllers REST
+│   │   │           ├── dto/         # Request/Response
+│   │   │           └── exception/   # Tratamento de erros
 │   │   └── resources/
 │   │       ├── application.yml      # Configuração principal
 │   │       ├── application-test.yml # Configuração de testes
 │   │       ├── application-prod.yml # Configuração de produção
 │   │       └── logback-spring.xml   # Configuração de logs
-│   └── test/                        # Testes unitários e de integração
+│   └── test/                        # Testes
 │       └── java/com/pixservice/
-│           ├── application/usecase/ # Testes de use cases
+│           ├── application/usecase/ # Testes de casos de uso
 │           ├── domain/entity/       # Testes de entidades
 │           └── integration/         # Testes de integração
 ├── docker-compose.yml               # PostgreSQL local
 ├── pom.xml                          # Dependências Maven
-└── README.md                        # Documentação principal
+└── README.md                        # Esta documentação
 ```
 
 ---
 
-## 🔒 Garantias de Consistência
+## 🔒 Como garantimos que tudo funcione direitinho
 
-### 1. Pessimistic Locking
+### 1\. Bloqueio pessimista
+
 ```java
 @Lock(LockModeType.PESSIMISTIC_WRITE)
 Optional<Wallet> findByIdWithLock(UUID id);
 ```
-Garante exclusão mútua ao modificar saldo.
 
-### 2. Optimistic Locking
+Garante que só uma operação mexe no saldo por vez.
+
+### 2\. Bloqueio otimista
+
 ```java
 @Version
 private Long version;
 ```
-Segunda camada de defesa contra updates concorrentes.
 
-### 3. Idempotência por Chave Única
+Segunda camada de defesa contra atualizações concorrentes.
+
+### 3\. Idempotência por chave única
+
 ```sql
 CREATE UNIQUE INDEX idx_idempotency_key 
 ON pix_transfers(idempotency_key);
 ```
-Constraint de banco impede duplicação.
 
-### 4. Ledger Imutável
-Tabela `transactions` append-only:
-- Auditoria completa
-- Saldo histórico calculável
-- Compliance regulatório
+O próprio banco impede duplicação.
 
-### 5. State Machine
+### 4\. Livro-razão imutável
+
+Tabela `transactions` só adiciona registros:
+
+* Auditoria completa
+
+* Saldo histórico calculável
+
+* Compliance regulatório
+
+### 5\. Máquina de estados
+
 ```
 PENDING → CONFIRMED ✅
 PENDING → REJECTED  ✅
-CONFIRMED → REJECTED ❌ (IllegalStateException)
+CONFIRMED → REJECTED ❌ (erro!)
 ```
 
-### 6. Transações ACID
+### 6\. Transações ACID
+
 ```java
 @Transactional
 public PixTransfer execute(...) {
@@ -334,19 +446,19 @@ public PixTransfer execute(...) {
 
 ---
 
-## 📊 Diagramas de Arquitetura
+## 📊 Diagramas para visualizar
 
-### Visão Geral da Arquitetura
+### Visão geral da arquitetura
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        CLIENT LAYER                          │
-│  (Postman, cURL, Frontend App, External Services)           │
+│                     CLIENTE                                  │
+│  (Postman, cURL, App Frontend, Serviços Externos)           │
 └─────────────────────────┬───────────────────────────────────┘
                           │ HTTP/REST
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    ADAPTER LAYER (API)                       │
+│                  CAMADA DE API                               │
 │  ┌────────────────┐              ┌────────────────┐         │
 │  │ WalletController│              │  PixController │         │
 │  │  - POST /wallets│              │  - POST /pix/  │         │
@@ -357,13 +469,13 @@ public PixTransfer execute(...) {
 │          │                                │                  │
 │          ▼                                ▼                  │
 │  ┌─────────────────────────────────────────────────┐       │
-│  │      GlobalExceptionHandler (Error Handling)     │       │
+│  │   Tratamento Global de Erros                     │       │
 │  └─────────────────────────────────────────────────┘       │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   APPLICATION LAYER (Use Cases)              │
+│              CAMADA DE APLICAÇÃO (Casos de Uso)              │
 │  ┌──────────────────┐  ┌──────────────────┐                │
 │  │ CreateWalletUseCase│  │PixTransferUseCase│               │
 │  └──────────────────┘  └──────────────────┘                │
@@ -380,9 +492,9 @@ public PixTransfer execute(...) {
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     DOMAIN LAYER                             │
+│                  CAMADA DE DOMÍNIO                           │
 │  ┌────────────────────────────────────────────────┐         │
-│  │              Domain Entities                    │         │
+│  │           Entidades do Domínio                  │         │
 │  │  ┌──────────┐  ┌────────────┐  ┌────────────┐ │         │
 │  │  │  Wallet  │  │PixTransfer │  │Transaction │ │         │
 │  │  │          │  │            │  │  (Ledger)  │ │         │
@@ -397,19 +509,19 @@ public PixTransfer execute(...) {
 │  │  └──────────┘  └────────────┘                  │         │
 │  └────────────────────────────────────────────────┘         │
 │  ┌────────────────────────────────────────────────┐         │
-│  │           Business Rules (in Entities)          │         │
+│  │      Regras de Negócio (nas Entidades)         │         │
 │  │  - deposit()                                    │         │
 │  │  - withdraw()                                   │         │
-│  │  - confirm()  [State Machine]                  │         │
-│  │  - reject()   [State Machine]                  │         │
+│  │  - confirm()  [Máquina de Estados]            │         │
+│  │  - reject()   [Máquina de Estados]            │         │
 │  └────────────────────────────────────────────────┘         │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              INFRASTRUCTURE LAYER (Persistence)              │
+│         CAMADA DE INFRAESTRUTURA (Persistência)              │
 │  ┌────────────────────────────────────────────────┐         │
-│  │              JPA Repositories                   │         │
+│  │           Repositórios JPA                      │         │
 │  │  ┌──────────────────┐  ┌──────────────────┐   │         │
 │  │  │WalletRepository  │  │PixTransferRepo   │   │         │
 │  │  │                  │  │                  │   │         │
@@ -424,7 +536,7 @@ public PixTransfer execute(...) {
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    DATABASE LAYER                            │
+│                 CAMADA DE BANCO DE DADOS                     │
 │  ┌──────────────────────────────────────────────┐           │
 │  │         PostgreSQL 15                         │           │
 │  │  ┌────────────┐  ┌──────────────┐           │           │
@@ -440,7 +552,7 @@ public PixTransfer execute(...) {
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Fluxo de Transferência Pix
+### Como funciona uma transferência Pix
 
 ```
 ┌────────┐                ┌────────────┐                ┌──────────┐
@@ -451,34 +563,33 @@ public PixTransfer execute(...) {
     │ Idempotency-Key: ABC123    │                           │
     ├───────────────────────────>│                           │
     │                            │                           │
-    │                            │ BEGIN TRANSACTION         │
+    │                            │ INICIA TRANSAÇÃO          │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ SELECT * FROM pix_transfers
-    │                            │ WHERE idempotency_key = ABC123
+    │                            │ Verifica se chave ABC123  │
+    │                            │ já foi usada              │
     │                            ├──────────────────────────>│
     │                            │<──────────────────────────┤
-    │                            │ (vazio)                   │
+    │                            │ (não foi usada)           │
     │                            │                           │
-    │                            │ SELECT * FROM wallets     │
-    │                            │ WHERE id = source_id      │
+    │                            │ Bloqueia carteira origem  │
     │                            │ FOR UPDATE (LOCK)         │
     │                            ├──────────────────────────>│
     │                            │<──────────────────────────┤
     │                            │                           │
-    │                            │ UPDATE wallets            │
-    │                            │ SET balance = balance - 150
+    │                            │ Atualiza saldo            │
+    │                            │ balance = balance - 150   │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ INSERT INTO transactions  │
+    │                            │ Registra no ledger        │
     │                            │ (PIX_OUT)                 │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ INSERT INTO pix_transfers │
+    │                            │ Cria transferência        │
     │                            │ (status = PENDING)        │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ COMMIT                    │
+    │                            │ CONFIRMA TRANSAÇÃO        │
     │                            ├──────────────────────────>│
     │                            │                           │
     │<───────────────────────────┤                           │
@@ -487,7 +598,7 @@ public PixTransfer execute(...) {
     │                            │                           │
 ```
 
-### Fluxo de Webhook
+### Como funciona um webhook
 
 ```
 ┌────────┐                ┌────────────┐                ┌──────────┐
@@ -499,47 +610,44 @@ public PixTransfer execute(...) {
     │ eventType: CONFIRMED       │                           │
     ├───────────────────────────>│                           │
     │                            │                           │
-    │                            │ BEGIN TRANSACTION         │
+    │                            │ INICIA TRANSAÇÃO          │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ SELECT * FROM webhook_events
-    │                            │ WHERE event_id = XYZ      │
+    │                            │ Verifica se eventId XYZ   │
+    │                            │ já foi processado         │
     │                            ├──────────────────────────>│
     │                            │<──────────────────────────┤
-    │                            │ (vazio - primeira vez)    │
+    │                            │ (primeira vez)            │
     │                            │                           │
-    │                            │ INSERT INTO webhook_events│
+    │                            │ Registra evento           │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ SELECT * FROM pix_transfers
-    │                            │ WHERE end_to_end_id = E123│
+    │                            │ Busca transferência       │
     │                            │ FOR UPDATE (LOCK)         │
     │                            ├──────────────────────────>│
     │                            │<──────────────────────────┤
     │                            │                           │
-    │                            │ SELECT * FROM wallets     │
-    │                            │ WHERE id = dest_id        │
+    │                            │ Bloqueia carteira destino │
     │                            │ FOR UPDATE (LOCK)         │
     │                            ├──────────────────────────>│
     │                            │<──────────────────────────┤
     │                            │                           │
-    │                            │ UPDATE wallets            │
-    │                            │ SET balance = balance + 150
+    │                            │ Atualiza saldo            │
+    │                            │ balance = balance + 150   │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ INSERT INTO transactions  │
+    │                            │ Registra no ledger        │
     │                            │ (PIX_IN)                  │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ UPDATE pix_transfers      │
-    │                            │ SET status = CONFIRMED    │
+    │                            │ Atualiza transferência    │
+    │                            │ status = CONFIRMED        │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ UPDATE webhook_events     │
-    │                            │ SET processed = true      │
+    │                            │ Marca evento processado   │
     │                            ├──────────────────────────>│
     │                            │                           │
-    │                            │ COMMIT                    │
+    │                            │ CONFIRMA TRANSAÇÃO        │
     │                            ├──────────────────────────>│
     │                            │                           │
     │<───────────────────────────┤                           │
@@ -548,70 +656,75 @@ public PixTransfer execute(...) {
 
 ---
 
-## 🚀 Como Executar
+## 🚀 Rodando o projeto
 
-### Pré-requisitos
+### O que você precisa ter instalado
 
-- Java 17+
-- Maven 3.8+
-- Docker e Docker Compose (para PostgreSQL)
+* Java 17 ou superior
 
-### 1. Iniciar o Banco de Dados
+* Maven 3.8 ou superior
+
+* Docker e Docker Compose (para o PostgreSQL)
+
+### Passo 1: Subir o banco de dados
 
 ```bash
 docker-compose up -d
 ```
 
-Isso iniciará um container PostgreSQL na porta 5432.
+Isso vai iniciar um container PostgreSQL na porta 5432.
 
-### 2. Compilar o Projeto
+### Passo 2: Compilar o projeto
 
 ```bash
 mvn clean install
 ```
 
-### 3. Executar a Aplicação
+### Passo 3: Rodar a aplicação
 
 ```bash
 mvn spring-boot:run
 ```
 
-Ou executar o JAR gerado:
+Ou se preferir rodar o JAR:
 
 ```bash
 java -jar target/pix-wallet-service-1.0.0.jar
 ```
 
-### 4. Verificar Saúde da Aplicação
+### Passo 4: Verificar se está tudo OK
 
 ```bash
 curl http://localhost:8080/actuator/health
 ```
 
-Resposta esperada:
+Você deve ver:
+
 ```json
 {
   "status": "UP"
 }
 ```
 
-### 5. Acessar Métricas
+### Passo 5: Ver as métricas
 
-- **Health**: http://localhost:8080/actuator/health
-- **Metrics**: http://localhost:8080/actuator/metrics
-- **Prometheus**: http://localhost:8080/actuator/prometheus
+* **Health**: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+
+* **Metrics**: [http://localhost:8080/actuator/metrics](http://localhost:8080/actuator/metrics)
+
+* **Prometheus**: [http://localhost:8080/actuator/prometheus](http://localhost:8080/actuator/prometheus)
 
 ---
 
-## 📦 Guia de Deploy
+## 📦 Colocando em produção
 
-### Deploy Local (Desenvolvimento)
+### Rodando localmente (desenvolvimento)
 
-Já coberto na seção "Como Executar" acima.
+Já explicamos acima na seção "Rodando o projeto".
 
-### Deploy com Docker
+### Rodando com Docker
 
-#### 1. Criar Dockerfile
+#### 1\. Criar o Dockerfile
 
 ```dockerfile
 FROM eclipse-temurin:17-jre-alpine
@@ -633,16 +746,16 @@ ENTRYPOINT ["java", \
     "app.jar"]
 ```
 
-#### 2. Build da Imagem
+#### 2\. Criar a imagem
 
 ```bash
 mvn clean package -DskipTests
 docker build -t pix-wallet-service:1.0.0 .
 ```
 
-#### 3. Executar com Docker Compose (Produção)
+#### 3\. Rodar com Docker Compose (produção)
 
-Criar `docker-compose.prod.yml`:
+Crie um arquivo `docker-compose.prod.yml`:
 
 ```yaml
 version: '3.8'
@@ -692,18 +805,19 @@ networks:
     driver: bridge
 ```
 
-Executar:
+Rodar:
 
 ```bash
-export DB_PASSWORD=securepassword123
+export DB_PASSWORD=senhasegura123
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-### Deploy em Kubernetes
+### Rodando no Kubernetes
 
 #### Manifests básicos:
 
 **deployment.yaml**:
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -755,6 +869,7 @@ spec:
 ```
 
 **service.yaml**:
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -772,24 +887,28 @@ spec:
 
 ---
 
-## 🧪 Testes Manuais
+## 🧪 Testando na mão
 
-### Pré-requisitos
+### O que você precisa
 
 1. Aplicação rodando em `http://localhost:8080`
+
 2. PostgreSQL rodando (via Docker Compose)
+
 3. `curl` instalado
+
 4. `jq` instalado (opcional, para formatar JSON)
 
-### 1. Criar Carteiras
+### 1\. Criar carteiras
 
-#### Carteira 1 (Alice - Origem)
+#### Carteira da Alice (quem vai enviar)
+
 ```bash
 curl -X POST http://localhost:8080/wallets \
   -H "Content-Type: application/json" \
   -d '{"userId": "alice"}' | jq
 
-# Resposta:
+# Você vai ver algo assim:
 # {
 #   "id": "123e4567-e89b-12d3-a456-426614174000",
 #   "userId": "alice",
@@ -798,20 +917,20 @@ curl -X POST http://localhost:8080/wallets \
 # }
 ```
 
-Salve o `id` retornado como `WALLET_ID_ALICE`
+Guarde o `id` que apareceu como `WALLET_ID_ALICE`
 
-#### Carteira 2 (Bob - Destino)
+#### Carteira do Bob (quem vai receber)
+
 ```bash
 curl -X POST http://localhost:8080/wallets \
   -H "Content-Type: application/json" \
   -d '{"userId": "bob"}' | jq
 ```
 
-Salve o `id` retornado como `WALLET_ID_BOB`
+Guarde o `id` que apareceu como `WALLET_ID_BOB`
 
-### 2. Registrar Chaves Pix
+### 2\. Registrar chave Pix do Bob
 
-#### Chave Pix para Bob (destino)
 ```bash
 curl -X POST http://localhost:8080/wallets/$WALLET_ID_BOB/pix-keys \
   -H "Content-Type: application/json" \
@@ -820,7 +939,7 @@ curl -X POST http://localhost:8080/wallets/$WALLET_ID_BOB/pix-keys \
     "keyValue": "bob@example.com"
   }' | jq
 
-# Resposta:
+# Você vai ver:
 # {
 #   "id": "...",
 #   "keyType": "EMAIL",
@@ -830,9 +949,8 @@ curl -X POST http://localhost:8080/wallets/$WALLET_ID_BOB/pix-keys \
 # }
 ```
 
-### 3. Adicionar Saldo (Depósito)
+### 3\. Colocar dinheiro na carteira da Alice
 
-#### Depósito na carteira de Alice
 ```bash
 curl -X POST http://localhost:8080/wallets/$WALLET_ID_ALICE/deposit \
   -H "Content-Type: application/json" \
@@ -840,19 +958,21 @@ curl -X POST http://localhost:8080/wallets/$WALLET_ID_ALICE/deposit \
   -d '{"amount": 1000.00}' | jq
 ```
 
-#### Verificar saldo
+#### Ver o saldo
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_ALICE/balance | jq
 
-# Resposta:
+# Deve mostrar:
 # {
 #   "balance": 1000.00
 # }
 ```
 
-### 4. Realizar Transferência Pix
+### 4\. Fazer uma transferência Pix
 
-#### Transferir de Alice para Bob
+#### Alice envia R$ 150 para Bob
+
 ```bash
 IDEMPOTENCY_KEY=$(uuidgen)
 
@@ -865,7 +985,7 @@ curl -X POST http://localhost:8080/pix/transfers \
     "amount": 150.00
   }' | jq
 
-# Resposta:
+# Você vai ver:
 # {
 #   "endToEndId": "E1730512345678ABC",
 #   "status": "PENDING",
@@ -875,25 +995,28 @@ curl -X POST http://localhost:8080/pix/transfers \
 # }
 ```
 
-Salve o `endToEndId` retornado como `END_TO_END_ID`
+Guarde o `endToEndId` como `END_TO_END_ID`
 
-#### Verificar saldo de Alice (deve ter sido debitado)
+#### Ver saldo da Alice (já foi debitado)
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_ALICE/balance | jq
 
-# Esperado: 850.00
+# Deve mostrar: 850.00
 ```
 
-#### Verificar saldo de Bob (ainda não creditado)
+#### Ver saldo do Bob (ainda não foi creditado)
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_BOB/balance | jq
 
-# Esperado: 0.00 (transferência ainda PENDING)
+# Deve mostrar: 0.00 (transferência ainda está PENDING)
 ```
 
-### 5. Simular Webhook de Confirmação
+### 5\. Simular confirmação do Pix
 
-#### Confirmar transferência
+#### Confirmar a transferência
+
 ```bash
 curl -X POST http://localhost:8080/pix/webhook \
   -H "Content-Type: application/json" \
@@ -907,16 +1030,18 @@ curl -X POST http://localhost:8080/pix/webhook \
 # Resposta: 200 OK
 ```
 
-#### Verificar saldo de Bob (agora creditado)
+#### Ver saldo do Bob (agora foi creditado!)
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_BOB/balance | jq
 
-# Esperado: 150.00
+# Deve mostrar: 150.00
 ```
 
-### 6. Testar Idempotência
+### 6\. Testar idempotência
 
-#### Tentar duplicar a transferência
+#### Tentar fazer a mesma transferência de novo
+
 ```bash
 curl -X POST http://localhost:8080/pix/transfers \
   -H "Content-Type: application/json" \
@@ -927,19 +1052,21 @@ curl -X POST http://localhost:8080/pix/transfers \
     "amount": 150.00
   }' | jq
 
-# Resposta: Mesma transferência anterior (idempotente)
+# Resposta: Mesma transferência anterior (não debitou de novo!)
 ```
 
-#### Verificar que saldo não mudou
+#### Verificar que o saldo não mudou
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_ALICE/balance | jq
 
-# Esperado: 850.00 (não debitou novamente)
+# Deve continuar: 850.00 (não debitou novamente)
 ```
 
-### 7. Testar Webhook Duplicado
+### 7\. Testar webhook duplicado
 
-#### Reenviar webhook de confirmação
+#### Enviar o mesmo webhook de novo
+
 ```bash
 curl -X POST http://localhost:8080/pix/webhook \
   -H "Content-Type: application/json" \
@@ -953,30 +1080,33 @@ curl -X POST http://localhost:8080/pix/webhook \
 # Resposta: 200 OK (idempotente)
 ```
 
-#### Verificar que saldo de Bob não mudou
+#### Verificar que o saldo do Bob não mudou
+
 ```bash
 curl http://localhost:8080/wallets/$WALLET_ID_BOB/balance | jq
 
-# Esperado: 150.00 (não creditou novamente)
+# Deve continuar: 150.00 (não creditou novamente)
 ```
 
-### 8. Testar Saldo Histórico
+### 8\. Testar saldo histórico
 
-#### Consultar saldo em timestamp passado
+#### Ver quanto a Alice tinha antes da transferência
+
 ```bash
 # Timestamp antes da transferência
 PAST_TIMESTAMP="2025-11-07T10:00:00Z"
 
 curl "http://localhost:8080/wallets/$WALLET_ID_ALICE/balance?at=$PAST_TIMESTAMP" | jq
 
-# Esperado: 1000.00 (antes da transferência)
+# Deve mostrar: 1000.00 (antes da transferência)
 ```
 
 ---
 
-## 📝 Exemplos de API
+## 📝 Exemplos práticos de uso
 
-### Criar Carteira
+### Criar uma carteira
+
 ```bash
 POST /wallets
 Content-Type: application/json
@@ -994,7 +1124,8 @@ Content-Type: application/json
 }
 ```
 
-### Registrar Chave Pix
+### Registrar chave Pix
+
 ```bash
 POST /wallets/{walletId}/pix-keys
 Content-Type: application/json
@@ -1014,7 +1145,8 @@ Content-Type: application/json
 }
 ```
 
-### Consultar Saldo
+### Ver o saldo
+
 ```bash
 GET /wallets/{walletId}/balance
 
@@ -1023,7 +1155,7 @@ GET /wallets/{walletId}/balance
   "balance": 1000.00
 }
 
-# Saldo histórico:
+# Ver saldo em um momento do passado:
 GET /wallets/{walletId}/balance?at=2025-11-07T10:00:00Z
 
 # Resposta: 200 OK
@@ -1032,11 +1164,12 @@ GET /wallets/{walletId}/balance?at=2025-11-07T10:00:00Z
 }
 ```
 
-### Depósito
+### Fazer um depósito
+
 ```bash
 POST /wallets/{walletId}/deposit
 Content-Type: application/json
-Idempotency-Key: unique-key-123
+Idempotency-Key: chave-unica-123
 
 {
   "amount": 500.00
@@ -1054,11 +1187,12 @@ Idempotency-Key: unique-key-123
 }
 ```
 
-### Saque
+### Fazer um saque
+
 ```bash
 POST /wallets/{walletId}/withdraw
 Content-Type: application/json
-Idempotency-Key: unique-key-456
+Idempotency-Key: chave-unica-456
 
 {
   "amount": 200.00
@@ -1076,15 +1210,16 @@ Idempotency-Key: unique-key-456
 }
 ```
 
-### Transferência Pix
+### Fazer uma transferência Pix
+
 ```bash
 POST /pix/transfers
 Content-Type: application/json
-Idempotency-Key: unique-key-789
+Idempotency-Key: chave-unica-789
 
 {
-  "fromWalletId": "source-wallet-uuid",
-  "toPixKey": "destination@example.com",
+  "fromWalletId": "uuid-carteira-origem",
+  "toPixKey": "destino@example.com",
   "amount": 150.00
 }
 
@@ -1093,18 +1228,19 @@ Idempotency-Key: unique-key-789
   "endToEndId": "E1730512345678ABC",
   "status": "PENDING",
   "amount": 150.00,
-  "toPixKey": "destination@example.com",
+  "toPixKey": "destino@example.com",
   "createdAt": "2025-11-07T10:00:00Z"
 }
 ```
 
-### Webhook Pix
+### Receber webhook do Pix
+
 ```bash
 POST /pix/webhook
 Content-Type: application/json
 
 {
-  "eventId": "webhook-event-uuid",
+  "eventId": "uuid-evento-webhook",
   "endToEndId": "E1730512345678ABC",
   "eventType": "CONFIRMED",
   "occurredAt": "2025-11-07T10:05:00Z"
@@ -1112,3 +1248,240 @@ Content-Type: application/json
 
 # Resposta: 200 OK
 ```
+
+---
+
+## ❓ Dúvidas frequentes
+
+### Por que usar bloqueio pessimista em vez de otimista?
+
+**Resposta**: Para operações financeiras, preferimos garantir consistência absoluta. O bloqueio pessimista garante que apenas uma operação por vez mexe no saldo, eliminando race conditions. Embora possa reduzir o throughput, a segurança é mais importante que performance neste caso.
+
+### O que acontece se o webhook chegar antes da transferência ser criada?
+
+**Resposta**: O webhook vai falhar porque não encontra a transferência. O PSP/BACEN vai reenviar o webhook automaticamente (retry), e na próxima tentativa a transferência já estará criada.
+
+### Como funciona o saldo histórico?
+
+**Resposta**: Mantemos um ledger imutável de todas as transações. Para calcular o saldo em qualquer momento do passado, somamos todas as transações até aquele timestamp.
+
+### Por que usar UUID em vez de ID sequencial?
+
+**Resposta**: UUIDs são globalmente únicos e não revelam informações sobre o volume de transações. Também facilitam merge de dados de diferentes ambientes.
+
+### O sistema suporta múltiplas moedas?
+
+**Resposta**: Atualmente não. O sistema foi projetado para uma única moeda (Real). Para suportar múltiplas moedas, seria necessário adicionar um campo `currency` e lógica de conversão.
+
+### Como escalar horizontalmente?
+
+**Resposta**: O sistema foi projetado para ser stateless. Você pode adicionar mais instâncias da aplicação atrás de um load balancer. O PostgreSQL garante a consistência através dos locks.
+
+### O que é idempotência e por que é importante?
+
+**Resposta**: Idempotência significa que você pode executar a mesma operação múltiplas vezes e o resultado será o mesmo da primeira execução. Isso é crucial para sistemas distribuídos onde retries são comuns devido a falhas de rede ou timeouts.
+
+### Como o sistema lida com deadlocks?
+
+**Resposta**: Minimizamos deadlocks adquirindo locks sempre na mesma ordem (primeiro carteira origem, depois destino). O PostgreSQL também tem timeout configurado para detectar e resolver deadlocks automaticamente.
+
+### Posso usar este sistema em produção?
+
+**Resposta**: Este projeto foi desenvolvido como code assessment com foco em boas práticas. Para produção real, seria necessário adicionar: autenticação/autorização, rate limiting, circuit breakers, monitoramento avançado, testes de carga, e integração real com PSP/BACEN.
+
+### Como contribuir com o projeto?
+
+**Resposta**:
+
+1. Faça um fork do repositório
+
+2. Crie uma branch para sua feature (`git checkout -b feature/MinhaFeature`)
+
+3. Commit suas mudanças (`git commit -m 'Adiciona MinhaFeature'`)
+
+4. Push para a branch (`git push origin feature/MinhaFeature`)
+
+5. Abra um Pull Request
+
+---
+
+## 🔧 Problemas comuns e soluções
+
+### Erro: "Could not acquire lock"
+
+**Causa**: Deadlock ou timeout de lock
+
+**Solução**:
+
+* Verifique se há operações travadas no banco
+
+* Aumente o timeout de lock se necessário
+
+* Garanta que locks são sempre adquiridos na mesma ordem
+
+**Como verificar locks no PostgreSQL**:
+
+```sql
+SELECT * FROM pg_locks WHERE NOT granted;
+```
+
+### Erro: "Insufficient balance"
+
+**Causa**: Tentativa de saque/transferência sem saldo suficiente
+
+**Solução**: Verifique o saldo antes de tentar a operação
+
+**Como verificar**:
+
+```bash
+curl http://localhost:8080/wallets/{walletId}/balance
+```
+
+### Erro: "Duplicate key violation"
+
+**Causa**: Tentativa de usar a mesma Idempotency-Key para operações diferentes
+
+**Solução**: Gere uma nova Idempotency-Key única para cada operação
+
+**Exemplo correto**:
+
+```bash
+# Gera uma nova chave única
+IDEMPOTENCY_KEY=$(uuidgen)
+curl -H "Idempotency-Key: $IDEMPOTENCY_KEY" ...
+```
+
+### Erro: "Pix key not found"
+
+**Causa**: Chave Pix do destinatário não está registrada
+
+**Solução**: Registre a chave Pix antes de fazer a transferência
+
+**Como registrar**:
+
+```bash
+curl -X POST http://localhost:8080/wallets/{walletId}/pix-keys \
+  -H "Content-Type: application/json" \
+  -d '{"keyType": "EMAIL", "keyValue": "user@example.com"}'
+```
+
+### Erro: "Cannot confirm a rejected transfer"
+
+**Causa**: Tentativa de confirmar uma transferência que já foi rejeitada
+
+**Solução**: Verifique o estado da transferência antes de processar o webhook
+
+**Estados válidos**:
+
+* `PENDING` → `CONFIRMED` ✅
+
+* `PENDING` → `REJECTED` ✅
+
+* `CONFIRMED` → `REJECTED` ❌
+
+* `REJECTED` → `CONFIRMED` ❌
+
+### Erro: "Connection refused" ao acessar o banco
+
+**Causa**: PostgreSQL não está rodando
+
+**Solução**: Inicie o PostgreSQL via Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+**Verificar se está rodando**:
+
+```bash
+docker ps | grep postgres
+```
+
+### Erro: "Port 8080 already in use"
+
+**Causa**: Outra aplicação está usando a porta 8080
+
+**Solução**:
+
+1. Pare a aplicação que está usando a porta
+
+2. Ou mude a porta da aplicação no `application.yml`:
+
+```yaml
+server:
+  port: 8081
+```
+
+### Aplicação lenta ou travando
+
+**Causa**: Muitas conexões abertas ou locks não liberados
+
+**Solução**:
+
+1. Verifique o pool de conexões:
+
+```yaml
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+```
+
+1. Verifique locks no banco:
+
+```sql
+SELECT * FROM pg_stat_activity WHERE state = 'active';
+```
+
+### Logs não aparecem
+
+**Causa**: Configuração de log incorreta
+
+**Solução**: Verifique o `logback-spring.xml` e o nível de log no `application.yml`:
+
+```yaml
+logging:
+  level:
+    com.pixservice: DEBUG
+```
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 👥 Autores
+
+* **Seu Nome** - _Desenvolvimento inicial_ - [seu-github](https://github.com/LeandroRibeiro2018)
+
+---
+
+## 🙏 Agradecimentos
+
+* Comunidade Spring Boot
+
+* Documentação do PostgreSQL
+
+* Banco Central do Brasil (especificações Pix)
+
+* Todos que contribuíram com feedback e sugestões
+
+---
+
+## 📞 Contato
+
+Para dúvidas, sugestões ou reportar problemas:
+
+* **Email**: [seu-email@example.com](mailto:devleandroribeiro@gmail.com)
+
+* **GitHub Issues**: [https://github.com/seu-usuario/pix-wallet-service/issues](https://github.com/LeandroRibeiro2018/pix-wallet-service/issues)
+
+* **LinkedIn**: [seu-perfil](https://linkedin.com/in/seu-perfil)
+
+---
+
+**Desenvolvido com ❤️ e ☕ por Leandro Ribeiro**
