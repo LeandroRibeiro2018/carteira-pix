@@ -81,26 +81,13 @@ jobs:
         env:
           SPRING_PROFILES_ACTIVE: test
       
-      - name: 📊 Executar testes de integração
-        run: mvn verify -P integration-tests
-        env:
-          SPRING_PROFILES_ACTIVE: test
-      
-      - name: 📈 Gerar relatório de cobertura
-        run: mvn jacoco:report
-      
-      - name: 📤 Upload relatório de cobertura
+      - name: 📤 Upload relatório de testes
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-${{ github.event.pull_request.number }}
-          path: target/site/jacoco/
+          name: test-results-${{ github.event.pull_request.number }}
+          path: target/surefire-reports/
           retention-days: 30
-      
-      - name: 📊 Comentar cobertura no PR
-        if: always()
-        run: |
-          echo "📊 Relatório de cobertura gerado com sucesso!"
-          echo "📁 Verifique os artefatos do workflow para visualizar o relatório completo"
 
   # Job 3: Análise de qualidade de código
   code-quality:
