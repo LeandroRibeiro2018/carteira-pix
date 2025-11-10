@@ -1476,11 +1476,11 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 Para dúvidas, sugestões ou reportar problemas:
 
-* **Email**: [seu-email@example.com](mailto:devleandroribeiro@gmail.com)
+* **Email**: [devleandroribeiro@gmail.com](mailto:devleandroribeiro@gmail.com)
 
-* **GitHub Issues**: [https://github.com/seu-usuario/pix-wallet-service/issues](https://github.com/LeandroRibeiro2018/pix-wallet-service/issues)
+* **GitHub Issues**: [https://github.com/seu-usuario/carteira-pix](https://github.com/LeandroRibeiro2018/carteira-pix)
 
-* **LinkedIn**: [seu-perfil](https://linkedin.com/in/seu-perfil)
+* **LinkedIn**: [Leandro Ribeiro](https://linkedin.com/in/leandro-ribeiro-dev)
 
 ---
 
