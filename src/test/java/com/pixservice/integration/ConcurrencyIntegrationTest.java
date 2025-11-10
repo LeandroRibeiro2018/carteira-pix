@@ -116,13 +116,7 @@ class ConcurrencyIntegrationTest {
                     return depositUseCase.execute(walletId, depositAmount, idempotencyKey);
                 } catch (Exception e) {
                     // Expected: some threads will fail due to constraint violation
-                    // Wait a bit and retry to get the existing transaction
-                    try {
-                        Thread.sleep(100);
-                        return transactionRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
-                    } catch (Exception ex) {
-                        return null;
-                    }
+                    return null;
                 }
             }, executor);
             futures.add(future);
@@ -130,15 +124,15 @@ class ConcurrencyIntegrationTest {
         
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         
-        List<Transaction> transactions = futures.stream()
-                .map(CompletableFuture::join)
-                .filter(t -> t != null)
-                .collect(Collectors.toList());
+        // Wait for DB consistency
+        Thread.sleep(200);
         
-        // Assert - All should return same transaction (or null if failed)
-        assertThat(transactions).isNotEmpty();
-        Transaction firstTransaction = transactions.get(0);
-        transactions.forEach(t -> assertThat(t.getId()).isEqualTo(firstTransaction.getId()));
+        // Assert - Verify only one transaction exists in database with this idempotency key
+        List<Transaction> allTransactions = transactionRepository.findAll();
+        long countWithKey = allTransactions.stream()
+                .filter(t -> idempotencyKey.equals(t.getIdempotencyKey()))
+                .count();
+        assertThat(countWithKey).isEqualTo(1L);
         
         // Balance should reflect only ONE deposit
         Wallet updatedWallet = walletRepository.findById(walletId).orElseThrow();
