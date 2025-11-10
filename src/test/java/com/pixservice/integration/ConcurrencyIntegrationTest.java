@@ -11,10 +11,10 @@ import com.pixservice.domain.enums.PixKeyType;
 import com.pixservice.infrastructure.repository.PixTransferRepository;
 import com.pixservice.infrastructure.repository.WalletRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -53,7 +53,6 @@ class ConcurrencyIntegrationTest {
     private PixTransferRepository pixTransferRepository;
     
     @Test
-    @Transactional
     void shouldHandleConcurrentDeposits() throws Exception {
         // Arrange
         Wallet wallet = createWalletUseCase.execute("user-concurrent-deposits");
@@ -86,7 +85,6 @@ class ConcurrencyIntegrationTest {
     }
     
     @Test
-    @Transactional
     void shouldHandleDuplicateRequestsWithSameIdempotencyKey() throws Exception {
         // Arrange
         Wallet wallet = createWalletUseCase.execute("user-idempotency");
@@ -125,7 +123,6 @@ class ConcurrencyIntegrationTest {
     }
     
     @Test
-    @Transactional
     void shouldHandleConcurrentPixTransfersWithSameIdempotencyKey() throws Exception {
         // Arrange - Create two wallets
         Wallet sourceWallet = createWalletUseCase.execute("user-source");
