@@ -66,7 +66,7 @@ public class Wallet {
     public void withdraw(BigDecimal amount) {
         validateAmount(amount);
         if (this.balance.compareTo(amount) < 0) {
-            throw new IllegalArgumentException("Saldo insuficiente");
+            throw new IllegalArgumentException("Insufficient balance");
         }
         this.balance = this.balance.subtract(amount);
     }
@@ -81,7 +81,7 @@ public class Wallet {
     
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Valor deve ser maior que zero");
+            throw new IllegalArgumentException("Amount must be greater than zero");
         }
     }
     

@@ -4,6 +4,13 @@
 
 Microserviço de carteira digital com suporte a transferências Pix, desenvolvido em Java 17 com Spring Boot.
 
+## 📚 Documentação
+
+- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Documentação técnica completa
+- **[FAQ.md](FAQ.md)** - Perguntas frequentes e respostas detalhadas
+- **[ANALYSIS_REPORT.md](ANALYSIS_REPORT.md)** - Análise de código e correções
+- **[CI-CD-GUIDE.md](CI-CD-GUIDE.md)** - Guia do pipeline CI/CD
+
 ## 🚀 Como Executar
 
 ### 1. Iniciar o Banco de Dados

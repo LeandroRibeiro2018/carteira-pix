@@ -17,7 +17,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "transactions", indexes = {
     @Index(name = "idx_wallet_created_at", columnList = "wallet_id,created_at"),
-    @Index(name = "idx_end_to_end_id", columnList = "end_to_end_id")
+    @Index(name = "idx_end_to_end_id", columnList = "end_to_end_id"),
+    @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true)
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -50,7 +51,7 @@ public class Transaction {
     @Column(name = "end_to_end_id")
     private String endToEndId;
     
-    @Column(name = "idempotency_key")
+    @Column(name = "idempotency_key", unique = true)
     private String idempotencyKey;
     
     @CreatedDate
