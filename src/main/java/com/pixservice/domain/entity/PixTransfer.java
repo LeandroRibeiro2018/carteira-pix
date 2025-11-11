@@ -85,7 +85,7 @@ public class PixTransfer {
         }
         
         if (status == PixTransferStatus.REJECTED) {
-            throw new IllegalStateException("Não é possível confirmar uma transferência rejeitada");
+            throw new IllegalStateException("Cannot confirm a rejected transfer");
         }
         
         this.status = PixTransferStatus.CONFIRMED;
@@ -98,7 +98,7 @@ public class PixTransfer {
         }
         
         if (status == PixTransferStatus.CONFIRMED) {
-            throw new IllegalStateException("Não é possível rejeitar uma transferência confirmada");
+            throw new IllegalStateException("Cannot reject a confirmed transfer");
         }
         
         this.status = PixTransferStatus.REJECTED;

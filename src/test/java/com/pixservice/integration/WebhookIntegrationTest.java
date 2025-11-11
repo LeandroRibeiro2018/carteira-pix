@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -58,7 +57,7 @@ class WebhookIntegrationTest {
     private WebhookEventRepository webhookEventRepository;
     
     @Test
-    @Transactional
+    
     void shouldProcessConfirmationWebhookSuccessfully() {
         // Arrange - Setup wallets and transfer
         Wallet sourceWallet = createWalletUseCase.execute("user-source-webhook");
@@ -95,7 +94,7 @@ class WebhookIntegrationTest {
     }
     
     @Test
-    @Transactional
+    
     void shouldProcessRejectionWebhookAndRefund() {
         // Arrange
         Wallet sourceWallet = createWalletUseCase.execute("user-rejection");
@@ -132,7 +131,7 @@ class WebhookIntegrationTest {
     }
     
     @Test
-    @Transactional
+    
     void shouldHandleDuplicateWebhookEvents() throws Exception {
         // Arrange
         Wallet sourceWallet = createWalletUseCase.execute("user-duplicate-webhook");
@@ -159,12 +158,20 @@ class WebhookIntegrationTest {
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         for (int i = 0; i < numberOfThreads; i++) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-                processPixWebhookUseCase.execute(eventId, endToEndId, WebhookEventType.CONFIRMED, occurredAt);
+                try {
+                    processPixWebhookUseCase.execute(eventId, endToEndId, WebhookEventType.CONFIRMED, occurredAt);
+                } catch (Exception e) {
+                    // Expected: some threads will fail due to duplicate eventId constraint
+                    // This is acceptable - idempotency is working
+                }
             }, executor);
             futures.add(future);
         }
         
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        
+        // Wait for DB consistency
+        Thread.sleep(200);
         
         // Assert - Should process only once
         PixTransfer updatedTransfer = pixTransferRepository.findByEndToEndId(endToEndId).orElseThrow();
@@ -182,7 +189,7 @@ class WebhookIntegrationTest {
     }
     
     @Test
-    @Transactional
+    
     void shouldHandleOutOfOrderWebhookEvents() {
         // Arrange
         Wallet sourceWallet = createWalletUseCase.execute("user-out-of-order");

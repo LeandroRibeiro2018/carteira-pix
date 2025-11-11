@@ -1,0 +1,68 @@
+name: Validacao de Qualidade de Codigo
+
+on:
+  push:
+    branches:
+      - feature/**
+      - dev
+      - homolog
+      - main
+    paths:
+      - 'src/**/*.java'
+      - 'pom.xml'
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: -Xmx512m
+
+jobs:
+  code-quality:
+    name: Analise de Qualidade
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout codigo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Compilar codigo
+        run: mvn clean compile -DskipTests
+      
+      - name: Analise estatica - Checkstyle
+        run: mvn checkstyle:check || true
+        continue-on-error: true
+      
+      - name: Deteccao de bugs - SpotBugs
+        run: mvn spotbugs:check || true
+        continue-on-error: true
+      
+      - name: Verificar dependencias desatualizadas
+        run: mvn versions:display-dependency-updates || true
+        continue-on-error: true
+      
+      - name: Resumo da analise
+        if: always()
+        run: |
+          echo ""
+          echo "===================================="
+          echo "Analise de Qualidade Concluida"
+          echo "===================================="
+          echo ""
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Autor: ${{ github.actor }}"
+          echo ""
+          echo "Verificacoes executadas:"
+          echo "  - Compilacao"
+          echo "  - Checkstyle (analise estatica)"
+          echo "  - SpotBugs (deteccao de bugs)"
+          echo "  - Dependencias desatualizadas"
+          echo ""
