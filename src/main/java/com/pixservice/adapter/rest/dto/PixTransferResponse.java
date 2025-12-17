@@ -2,7 +2,6 @@ package com.pixservice.adapter.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pixservice.domain.enums.PixTransferStatus;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,7 +15,6 @@ import java.time.Instant;
  * @param toPixKey Chave Pix de destino
  * @param createdAt Data/hora de criação da transferência
  */
-@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record PixTransferResponse(
     String endToEndId,

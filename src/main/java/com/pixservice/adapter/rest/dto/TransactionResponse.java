@@ -2,7 +2,6 @@ package com.pixservice.adapter.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pixservice.domain.enums.TransactionType;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -20,7 +19,6 @@ import java.util.UUID;
  * @param endToEndId End-to-end ID (para transferências Pix)
  * @param createdAt Data/hora da transação
  */
-@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record TransactionResponse(
     UUID id,

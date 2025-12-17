@@ -1,7 +1,5 @@
 package com.pixservice.adapter.rest.dto;
 
-import lombok.Builder;
-
 import java.math.BigDecimal;
 
 /**
@@ -9,7 +7,6 @@ import java.math.BigDecimal;
  * 
  * @param balance Saldo da carteira
  */
-@Builder
 public record BalanceResponse(
     BigDecimal balance
 ) {}

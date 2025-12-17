@@ -1,7 +1,6 @@
 package com.pixservice.adapter.rest.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Builder;
 
 import java.time.Instant;
 import java.util.Map;
@@ -15,7 +14,6 @@ import java.util.Map;
  * @param message Mensagem descritiva do erro
  * @param validationErrors Mapa de erros de validação (campo -> mensagem)
  */
-@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ErrorResponse(
     Instant timestamp,

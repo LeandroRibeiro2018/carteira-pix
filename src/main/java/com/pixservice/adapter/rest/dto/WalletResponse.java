@@ -1,7 +1,6 @@
 package com.pixservice.adapter.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,7 +14,6 @@ import java.util.UUID;
  * @param balance Saldo atual da carteira
  * @param createdAt Data/hora de criação da carteira
  */
-@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record WalletResponse(
     UUID id,

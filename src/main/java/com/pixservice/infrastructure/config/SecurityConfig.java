@@ -27,14 +27,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Desabilita CSRF para APIs REST stateless
-            // Em produção, considere usar tokens CSRF ou JWT
-            .csrf(AbstractHttpConfigurer::disable)
+            // CSRF habilitado para endpoints críticos
+            // APIs REST podem usar outros mecanismos como JWT em produção
+            // Desabilitado apenas para endpoints de documentação e health check
+            .csrf(csrf -> csrf
+                .ignoringRequestMatchers(
+                    "/actuator/**",
+                    "/v3/api-docs/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html"
+                )
+            )
             
             // Configuração de headers de segurança
             .headers(headers -> headers
                 // X-Content-Type-Options: nosniff - Previne MIME type sniffing
-                .contentTypeOptions(contentTypeOptions -> contentTypeOptions.disable())
+                // Habilitado por padrão, não precisa de configuração explícita
+                .contentTypeOptions(contentTypeOptions -> {})
                 
                 // X-Frame-Options: DENY - Previne clickjacking
                 .frameOptions(frameOptions -> frameOptions.deny())

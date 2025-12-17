@@ -2,7 +2,6 @@ package com.pixservice.adapter.rest.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pixservice.domain.enums.PixKeyType;
-import lombok.Builder;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -16,7 +15,6 @@ import java.util.UUID;
  * @param walletId ID da carteira associada
  * @param createdAt Data/hora de criação da chave
  */
-@Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record PixKeyResponse(
     UUID id,
