@@ -48,6 +48,10 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
 
 logging:
   level:
@@ -55,6 +59,16 @@ logging:
     com.pixservice: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    display-request-duration: true
+    operations-sorter: method
+    tags-sorter: alpha
 
 app:
   pix:
