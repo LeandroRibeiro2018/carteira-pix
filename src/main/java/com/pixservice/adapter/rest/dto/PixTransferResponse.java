@@ -1,26 +1,25 @@
 package com.pixservice.adapter.rest.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pixservice.domain.enums.PixTransferStatus;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 /**
  * DTO de resposta para transferência Pix
+ * 
+ * @param endToEndId Identificador end-to-end da transferência
+ * @param status Status da transferência (PENDING, CONFIRMED, REJECTED)
+ * @param amount Valor transferido
+ * @param toPixKey Chave Pix de destino
+ * @param createdAt Data/hora de criação da transferência
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class PixTransferResponse {
-    
-    private String endToEndId;
-    private PixTransferStatus status;
-    private BigDecimal amount;
-    private String toPixKey;
-    private Instant createdAt;
-}
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record PixTransferResponse(
+    String endToEndId,
+    PixTransferStatus status,
+    BigDecimal amount,
+    String toPixKey,
+    Instant createdAt
+) {}

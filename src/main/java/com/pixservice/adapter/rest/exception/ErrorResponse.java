@@ -1,25 +1,24 @@
 package com.pixservice.adapter.rest.exception;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.time.Instant;
 import java.util.Map;
 
 /**
  * DTO padrão para respostas de erro
+ * 
+ * @param timestamp Data/hora do erro
+ * @param status Código de status HTTP
+ * @param error Tipo do erro
+ * @param message Mensagem descritiva do erro
+ * @param validationErrors Mapa de erros de validação (campo -> mensagem)
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class ErrorResponse {
-    
-    private Instant timestamp;
-    private int status;
-    private String error;
-    private String message;
-    private Map<String, String> validationErrors;
-}
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ErrorResponse(
+    Instant timestamp,
+    int status,
+    String error,
+    String message,
+    Map<String, String> validationErrors
+) {}

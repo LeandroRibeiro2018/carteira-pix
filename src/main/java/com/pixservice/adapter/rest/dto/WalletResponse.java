@@ -1,9 +1,6 @@
 package com.pixservice.adapter.rest.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -11,15 +8,16 @@ import java.util.UUID;
 
 /**
  * DTO de resposta para carteira
+ * 
+ * @param id Identificador único da carteira
+ * @param userId Identificador do usuário proprietário
+ * @param balance Saldo atual da carteira
+ * @param createdAt Data/hora de criação da carteira
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class WalletResponse {
-    
-    private UUID id;
-    private String userId;
-    private BigDecimal balance;
-    private Instant createdAt;
-}
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record WalletResponse(
+    UUID id,
+    String userId,
+    BigDecimal balance,
+    Instant createdAt
+) {}
