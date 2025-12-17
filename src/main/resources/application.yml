@@ -24,7 +24,7 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
-      javax:
+      jakarta:
         persistence:
           lock:
             timeout: 10000  # 10 segundos timeout para locks

@@ -1,20 +1,13 @@
 package com.pixservice.adapter.rest.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * DTO para criar carteira
+ * 
+ * @param userId Identificador único do usuário
  */
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class CreateWalletRequest {
-    
+public record CreateWalletRequest(
     @NotBlank(message = "UserId is required")
-    private String userId;
-}
+    String userId
+) {}
